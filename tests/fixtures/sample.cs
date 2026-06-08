@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 
-namespace GraphifyDemo
+namespace Graph3dDemo
 {
     public interface IProcessor
     {

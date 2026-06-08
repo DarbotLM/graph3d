@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from graphify.extract import extract
+from graph3d.extract import extract
 
 
 def _write(path: Path, text: str) -> Path:

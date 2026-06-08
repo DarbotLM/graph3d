@@ -162,7 +162,7 @@ def diagnose_extraction(
     extract_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Summarize same-endpoint edge-collapse risk for one JSON graph/extraction dict."""
-    from graphify.build import build_from_json
+    from graph3d.build import build_from_json
 
     node_ids = _node_ids(extraction)
     raw_edges = _edge_list(extraction)
@@ -269,8 +269,8 @@ def diagnose_extraction(
 
 
 def _read_json_file(path: str | Path) -> dict[str, Any]:
-    """Read a JSON graph after applying Graphify's graph-load size cap."""
-    from graphify.security import check_graph_file_size_cap
+    """Read a JSON graph after applying Graph3d's graph-load size cap."""
+    from graph3d.security import check_graph_file_size_cap
 
     json_path = Path(path)
     check_graph_file_size_cap(json_path)
@@ -333,7 +333,7 @@ def format_diagnostic_json(summary: dict[str, Any]) -> dict[str, Any]:
 def format_diagnostic_report(summary: dict[str, Any]) -> str:
     suppression = summary.get("producer_suppression", {})
     lines = [
-        "[graphify] MultiDiGraph edge-collapse diagnostic",
+        "[graph3d] MultiDiGraph edge-collapse diagnostic",
         f"input: {summary.get('input_path', '<in-memory>')}",
         "input_stage: provided JSON (normal graph.json is post-build)",
         f"effective_directed: {summary.get('effective_directed', '<direct-call>')}",

@@ -1,4 +1,4 @@
-"""Token-reduction benchmark - measures how much context graphify saves vs naive full-corpus approach."""
+"""Token-reduction benchmark - measures how much context graph3d saves vs naive full-corpus approach."""
 from __future__ import annotations
 import json
 import sys
@@ -6,8 +6,8 @@ from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
 
-from graphify.build import edge_data
-from graphify.serve import _query_terms
+from graph3d.build import edge_data
+from graph3d.serve import _query_terms
 
 
 _CHARS_PER_TOKEN = 4  # standard approximation
@@ -85,11 +85,11 @@ _SAMPLE_QUESTIONS = [
 
 
 def run_benchmark(
-    graph_path: str = "graphify-out/graph.json",
+    graph_path: str = "graph3d-out/graph.json",
     corpus_words: int | None = None,
     questions: list[str] | None = None,
 ) -> dict:
-    """Measure token reduction: corpus tokens vs graphify query tokens.
+    """Measure token reduction: corpus tokens vs graph3d query tokens.
 
     Args:
         graph_path: path to the built graph
@@ -98,7 +98,7 @@ def run_benchmark(
 
     Returns dict with: corpus_tokens, avg_query_tokens, reduction_ratio, per_question
     """
-    from graphify.security import check_graph_file_size_cap
+    from graph3d.security import check_graph_file_size_cap
     check_graph_file_size_cap(Path(graph_path))
     data = json.loads(Path(graph_path).read_text(encoding="utf-8"))
     try:
@@ -142,7 +142,7 @@ def print_benchmark(result: dict) -> None:
         print(f"Benchmark error: {result['error']}")
         return
 
-    print(f"\ngraphify token reduction benchmark")
+    print(f"\ngraph3d token reduction benchmark")
     print(_hr(50))
     arrow = _safe("→", "->")
     print(f"  Corpus:          {result['corpus_words']:,} words {arrow} ~{result['corpus_tokens']:,} tokens (naive)")

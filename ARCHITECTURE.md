@@ -1,6 +1,6 @@
 # Architecture
 
-graphify is a Claude Code skill backed by a Python library. The skill orchestrates the library; the library can be used standalone.
+graph3d is a Claude Code skill backed by a Python library. The skill orchestrates the library; the library can be used standalone.
 
 ## Pipeline
 
@@ -8,7 +8,7 @@ graphify is a Claude Code skill backed by a Python library. The skill orchestrat
 detect()  →  extract()  →  build_graph()  →  cluster()  →  analyze()  →  report()  →  export()
 ```
 
-Each stage is a single function in its own module. They communicate through plain Python dicts and NetworkX graphs - no shared state, no side effects outside `graphify-out/`.
+Each stage is a single function in its own module. They communicate through plain Python dicts and NetworkX graphs - no shared state, no side effects outside `graph3d-out/`.
 
 ## Module responsibilities
 
@@ -21,7 +21,7 @@ Each stage is a single function in its own module. They communicate through plai
 | `analyze.py` | `analyze(G)` | graph → analysis dict (god nodes, surprises, questions) |
 | `report.py` | `render_report(G, analysis)` | graph + analysis → GRAPH_REPORT.md string |
 | `export.py` | `export(G, out_dir, ...)` | graph → Obsidian vault, graph.json, graph.html, graph.svg |
-| `callflow_html.py` | `write_callflow_html(...)` | graphify-out files → Mermaid architecture/call-flow HTML |
+| `callflow_html.py` | `write_callflow_html(...)` | graph3d-out files → Mermaid architecture/call-flow HTML |
 | `ingest.py` | `ingest(url, ...)` | URL → file saved to corpus dir |
 | `cache.py` | `check_semantic_cache / save_semantic_cache` | files → (cached, uncached) split |
 | `security.py` | validation helpers | URL / path / label → validated or raises |
@@ -65,11 +65,11 @@ Every extractor returns:
 
 ## Security
 
-All external input passes through `graphify/security.py` before use:
+All external input passes through `graph3d/security.py` before use:
 
 - URLs → `validate_url()` (http/https only) + `_NoFileRedirectHandler` (blocks file:// redirects)
 - Fetched content → `safe_fetch()` / `safe_fetch_text()` (size cap, timeout)
-- Graph file paths → `validate_graph_path()` (must resolve inside `graphify-out/`)
+- Graph file paths → `validate_graph_path()` (must resolve inside `graph3d-out/`)
 - Node labels → `sanitize_label()` (strips control chars, caps 256 chars, HTML-escapes)
 
 See `SECURITY.md` for the full threat model.

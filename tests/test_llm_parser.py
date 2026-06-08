@@ -4,7 +4,7 @@ subprocess argv shape introduced in the hollow-response fix.
 These tests cover:
 - The four parser failure modes described in PR #1062
 - The switch from --append-system-prompt to --system-prompt
-- The GRAPHIFY_CLAUDE_CLI_MODEL env-var passthrough
+- The GRAPH3D_CLAUDE_CLI_MODEL env-var passthrough
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from graphify import llm
+from graph3d import llm
 
 
 # ---------- _parse_llm_json: the four canonical failure modes ----------
@@ -103,7 +103,7 @@ def _make_envelope(result_obj: dict) -> str:
 @patch("subprocess.run")
 def test_uses_system_prompt_not_append(mock_run, _which):
     """The hollow-response root cause was --append-system-prompt
-    layering graphify's extraction prompt on top of Claude Code's
+    layering graph3d's extraction prompt on top of Claude Code's
     default interactive-agent prompt. The fix switches to
     --system-prompt (replace) to eliminate the conflict."""
     mock_run.return_value.returncode = 0
@@ -121,8 +121,8 @@ def test_uses_system_prompt_not_append(mock_run, _which):
 @patch("shutil.which", return_value="/usr/local/bin/claude")
 @patch("subprocess.run")
 def test_model_env_var_adds_model_flag(mock_run, _which, monkeypatch):
-    """GRAPHIFY_CLAUDE_CLI_MODEL must be forwarded to claude -p --model."""
-    monkeypatch.setenv("GRAPHIFY_CLAUDE_CLI_MODEL", "haiku")
+    """GRAPH3D_CLAUDE_CLI_MODEL must be forwarded to claude -p --model."""
+    monkeypatch.setenv("GRAPH3D_CLAUDE_CLI_MODEL", "haiku")
     mock_run.return_value.returncode = 0
     mock_run.return_value.stdout = _make_envelope({"nodes": [], "edges": [], "hyperedges": []})
     mock_run.return_value.stderr = ""
@@ -137,7 +137,7 @@ def test_model_env_var_adds_model_flag(mock_run, _which, monkeypatch):
 def test_no_model_flag_when_env_var_unset(mock_run, _which, monkeypatch):
     """Default behaviour: when the env var is not set, --model is not
     added so claude-cli's own default kicks in."""
-    monkeypatch.delenv("GRAPHIFY_CLAUDE_CLI_MODEL", raising=False)
+    monkeypatch.delenv("GRAPH3D_CLAUDE_CLI_MODEL", raising=False)
     mock_run.return_value.returncode = 0
     mock_run.return_value.stdout = _make_envelope({"nodes": [], "edges": [], "hyperedges": []})
     mock_run.return_value.stderr = ""

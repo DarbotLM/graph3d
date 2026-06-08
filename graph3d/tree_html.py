@@ -19,7 +19,7 @@ Tree-data shape:
       "children": [ { "name", "total_count", "children": [...] }, ... ]
     }
 
-CLI: ``graphify tree [--graph PATH] [--output HTML] [--root PATH]
+CLI: ``graph3d tree [--graph PATH] [--output HTML] [--root PATH]
 [--max-children N] [--label NAME]``.
 
 Implementation notes:
@@ -125,7 +125,7 @@ def build_tree(
         sym_children: List[Dict[str, Any]] = []
         for n in syms:
             label = n.get("label", n.get("id", "?"))
-            # Skip the redundant file-name node graphify emits.
+            # Skip the redundant file-name node graph3d emits.
             if label == src_path.name and n.get("file_type") == "code":
                 continue
             sym_children.append({
@@ -569,12 +569,12 @@ def write_tree_html(
     # kept for CLI compatibility with the older signature; ignored now
     top_k_edges: int = 0,
 ) -> Path:
-    from graphify.security import check_graph_file_size_cap
+    from graph3d.security import check_graph_file_size_cap
     check_graph_file_size_cap(graph_path)
     graph = json.loads(graph_path.read_text(encoding="utf-8"))
     tree = build_tree(graph, root=root, max_children=max_children,
                       project_label=project_label)
-    title = f"{tree['name']} — graphify tree viewer"
+    title = f"{tree['name']} — graph3d tree viewer"
     header = f"{tree['name']} — Knowledge Graph"
     html = emit_html(tree, title=title, header=header)
     output_path.parent.mkdir(parents=True, exist_ok=True)

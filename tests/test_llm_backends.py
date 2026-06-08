@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from graphify import llm
+from graph3d import llm
 
 
 def _clear_backend_env(monkeypatch):
@@ -60,7 +60,7 @@ def test_extract_files_direct_routes_gemini_through_openai_compat(tmp_path, monk
     source.write_text("# Architecture\n\nThe runner emits a snapshot.\n")
     result = {"nodes": [], "edges": [], "hyperedges": [], "input_tokens": 1, "output_tokens": 1}
 
-    with patch("graphify.llm._call_openai_compat", return_value=result) as call:
+    with patch("graph3d.llm._call_openai_compat", return_value=result) as call:
         assert llm.extract_files_direct([source], backend="gemini", root=tmp_path) is result
 
     assert call.call_args.args[:4] == (
@@ -77,12 +77,12 @@ def test_extract_files_direct_routes_gemini_through_openai_compat(tmp_path, monk
 def test_gemini_model_can_be_overridden_by_env(tmp_path, monkeypatch):
     _clear_backend_env(monkeypatch)
     monkeypatch.setenv("GOOGLE_API_KEY", "google-key")
-    monkeypatch.setenv("GRAPHIFY_GEMINI_MODEL", "gemini-3.1-pro-preview")
+    monkeypatch.setenv("GRAPH3D_GEMINI_MODEL", "gemini-3.1-pro-preview")
     source = tmp_path / "note.md"
     source.write_text("# Architecture\n")
     result = {"nodes": [], "edges": [], "hyperedges": [], "input_tokens": 1, "output_tokens": 1}
 
-    with patch("graphify.llm._call_openai_compat", return_value=result) as call:
+    with patch("graph3d.llm._call_openai_compat", return_value=result) as call:
         llm.extract_files_direct([source], backend="gemini", root=tmp_path)
 
     assert call.call_args.args[2] == "gemini-3.1-pro-preview"
@@ -147,7 +147,7 @@ def test_adaptive_retry_splits_on_context_exceeded(tmp_path):
             raise RuntimeError("Error 400: Context size has been exceeded.")
         return _ok(nodes=[{"id": f.stem} for f in chunk])
 
-    with patch("graphify.llm.extract_files_direct", side_effect=fake_extract):
+    with patch("graph3d.llm.extract_files_direct", side_effect=fake_extract):
         result = llm._extract_with_adaptive_retry(
             files, backend="kimi", api_key="k", model="m", root=tmp_path, max_depth=3
         )
@@ -163,7 +163,7 @@ def test_adaptive_retry_gives_up_on_single_file_overflow(tmp_path):
     def fake_extract(*_, **__):
         raise RuntimeError("context_length_exceeded")
 
-    with patch("graphify.llm.extract_files_direct", side_effect=fake_extract):
+    with patch("graph3d.llm.extract_files_direct", side_effect=fake_extract):
         result = llm._extract_with_adaptive_retry(
             [f], backend="kimi", api_key="k", model="m", root=tmp_path, max_depth=3
         )
@@ -182,7 +182,7 @@ def test_adaptive_retry_re_raises_unrelated_errors(tmp_path):
     def fake_extract(*_, **__):
         raise RuntimeError("rate limit hit")
 
-    with patch("graphify.llm.extract_files_direct", side_effect=fake_extract):
+    with patch("graph3d.llm.extract_files_direct", side_effect=fake_extract):
         with pytest.raises(RuntimeError, match="rate limit"):
             llm._extract_with_adaptive_retry(
                 [f], backend="kimi", api_key="k", model="m", root=tmp_path, max_depth=3
@@ -359,8 +359,8 @@ def _install_capturing_openai(monkeypatch):
 
 def test_ollama_extra_body_sets_num_ctx_and_keep_alive(monkeypatch):
     captured = _install_capturing_openai(monkeypatch)
-    monkeypatch.delenv("GRAPHIFY_OLLAMA_NUM_CTX", raising=False)
-    monkeypatch.delenv("GRAPHIFY_OLLAMA_KEEP_ALIVE", raising=False)
+    monkeypatch.delenv("GRAPH3D_OLLAMA_NUM_CTX", raising=False)
+    monkeypatch.delenv("GRAPH3D_OLLAMA_KEEP_ALIVE", raising=False)
 
     llm._call_openai_compat(
         "http://localhost:11434/v1", "ollama", "qwen2.5-coder:7b",
@@ -380,8 +380,8 @@ def test_ollama_num_ctx_scales_with_small_token_budget(monkeypatch):
     # 131072 forced Ollama to allocate 128k KV-cache slots on a 31B model, causing
     # VRAM exhaustion by chunk 4. num_ctx must now reflect actual chunk size.
     captured = _install_capturing_openai(monkeypatch)
-    monkeypatch.delenv("GRAPHIFY_OLLAMA_NUM_CTX", raising=False)
-    monkeypatch.delenv("GRAPHIFY_OLLAMA_KEEP_ALIVE", raising=False)
+    monkeypatch.delenv("GRAPH3D_OLLAMA_NUM_CTX", raising=False)
+    monkeypatch.delenv("GRAPH3D_OLLAMA_KEEP_ALIVE", raising=False)
 
     # Simulate an 8k-token chunk: ~32k chars of content
     small_chunk_msg = "x" * 32_000
@@ -403,8 +403,8 @@ def test_ollama_num_ctx_scales_with_small_token_budget(monkeypatch):
 
 def test_ollama_num_ctx_env_override(monkeypatch):
     captured = _install_capturing_openai(monkeypatch)
-    monkeypatch.setenv("GRAPHIFY_OLLAMA_NUM_CTX", "65536")
-    monkeypatch.delenv("GRAPHIFY_OLLAMA_KEEP_ALIVE", raising=False)
+    monkeypatch.setenv("GRAPH3D_OLLAMA_NUM_CTX", "65536")
+    monkeypatch.delenv("GRAPH3D_OLLAMA_KEEP_ALIVE", raising=False)
 
     llm._call_openai_compat(
         "http://localhost:11434/v1", "ollama", "qwen2.5-coder:7b",
@@ -440,10 +440,10 @@ def test_extract_corpus_parallel_ollama_runs_serially(tmp_path, monkeypatch):
         call_order.append(len(chunk))
         return _ok(nodes=[{"id": f.stem} for f in chunk])
 
-    monkeypatch.delenv("GRAPHIFY_OLLAMA_PARALLEL", raising=False)
+    monkeypatch.delenv("GRAPH3D_OLLAMA_PARALLEL", raising=False)
 
-    with patch("graphify.llm.extract_files_direct", side_effect=fake_extract):
-        with patch("graphify.llm.ThreadPoolExecutor") as mock_pool:
+    with patch("graph3d.llm.extract_files_direct", side_effect=fake_extract):
+        with patch("graph3d.llm.ThreadPoolExecutor") as mock_pool:
             result = llm.extract_corpus_parallel(
                 files, backend="ollama", api_key="ollama", model="qwen2.5-coder:7b",
                 root=tmp_path, token_budget=None, chunk_size=2, max_concurrency=4,
@@ -458,10 +458,10 @@ def test_extract_corpus_parallel_ollama_parallel_env_restores_concurrency(tmp_pa
     for f in files:
         f.write_text("hello")
 
-    monkeypatch.setenv("GRAPHIFY_OLLAMA_PARALLEL", "1")
+    monkeypatch.setenv("GRAPH3D_OLLAMA_PARALLEL", "1")
 
-    with patch("graphify.llm.extract_files_direct", return_value=_ok()):
-        with patch("graphify.llm.ThreadPoolExecutor") as mock_pool:
+    with patch("graph3d.llm.extract_files_direct", return_value=_ok()):
+        with patch("graph3d.llm.ThreadPoolExecutor") as mock_pool:
             mock_pool.return_value.__enter__ = lambda s: s
             mock_pool.return_value.__exit__ = lambda s, *a: False
             mock_pool.return_value.submit = lambda fn, *a, **kw: type(
@@ -502,7 +502,7 @@ def test_adaptive_retry_bisects_on_hollow_ollama_response(tmp_path):
             }
         return _ok(nodes=[{"id": f.stem} for f in chunk])
 
-    with patch("graphify.llm.extract_files_direct", side_effect=fake_extract):
+    with patch("graph3d.llm.extract_files_direct", side_effect=fake_extract):
         result = llm._extract_with_adaptive_retry(
             files, backend="ollama", api_key="ollama", model="qwen2.5-coder:7b",
             root=tmp_path, max_depth=3,

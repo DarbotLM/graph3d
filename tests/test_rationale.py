@@ -2,8 +2,8 @@
 import textwrap
 from pathlib import Path
 import pytest
-from graphify.extract import extract_python
-from graphify.build import build_from_json
+from graph3d.extract import extract_python
+from graph3d.build import build_from_json
 
 
 def _write_py(tmp_path: Path, code: str) -> Path:

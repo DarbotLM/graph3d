@@ -1,7 +1,7 @@
-"""Regression tests for `graphify explain` arrow direction (#853)."""
+"""Regression tests for `graph3d explain` arrow direction (#853)."""
 from __future__ import annotations
 import json
-import graphify.__main__ as mainmod
+import graph3d.__main__ as mainmod
 
 
 def _write_graph(tmp_path):
@@ -34,7 +34,7 @@ def _write_graph(tmp_path):
 def _run(monkeypatch, graph_path, label, capsys):
     monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
     monkeypatch.setattr(mainmod.sys, "argv",
-        ["graphify", "explain", label, "--graph", str(graph_path)])
+        ["graph3d", "explain", label, "--graph", str(graph_path)])
     mainmod.main()
     return capsys.readouterr().out
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/safishamsi/graphify/v4/docs/logo-text.svg" width="260" height="64" alt="Graphify"/>
+  <img src="https://raw.githubusercontent.com/DarbotLM/graph3d/v4/docs/logo-text.svg" width="260" height="64" alt="Graph3d"/>
 </p>
 
 <p align="center">
@@ -7,24 +7,24 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/safishamsi/graphify/actions/workflows/ci.yml"><img src="https://github.com/safishamsi/graphify/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
-  <a href="https://pypi.org/project/graphifyy/"><img src="https://img.shields.io/pypi/v/graphifyy" alt="PyPI"/></a>
-  <a href="https://pepy.tech/project/graphifyy"><img src="https://static.pepy.tech/badge/graphifyy" alt="Downloads"/></a>
+  <a href="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml"><img src="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
+  <a href="https://pypi.org/project/graph3d/"><img src="https://img.shields.io/pypi/v/graph3d" alt="PyPI"/></a>
+  <a href="https://pepy.tech/project/graph3d"><img src="https://static.pepy.tech/badge/graph3d" alt="Downloads"/></a>
   <a href="https://github.com/sponsors/safishamsi"><img src="https://img.shields.io/badge/sponsor-safishamsi-ea4aaa?logo=github-sponsors" alt="Sponsor"/></a>
 </p>
 
-**Keterampilan untuk asisten kode AI.** Ketik `/graphify` di Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro, atau Google Antigravity — membaca file Anda, membangun graf pengetahuan, dan mengembalikan struktur yang tidak Anda ketahui ada. Pahami codebase lebih cepat. Temukan "mengapa" di balik keputusan arsitektur.
+**Keterampilan untuk asisten kode AI.** Ketik `/graph3d` di Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro, atau Google Antigravity — membaca file Anda, membangun graf pengetahuan, dan mengembalikan struktur yang tidak Anda ketahui ada. Pahami codebase lebih cepat. Temukan "mengapa" di balik keputusan arsitektur.
 
-Sepenuhnya multimodal. Tambahkan kode, PDF, markdown, tangkapan layar, diagram, foto papan tulis, gambar dalam bahasa lain, atau file video dan audio — graphify mengekstrak konsep dan hubungan dari semuanya dan menghubungkannya dalam satu graf. Video ditranskrip secara lokal dengan Whisper. Mendukung 25 bahasa pemrograman melalui tree-sitter AST.
+Sepenuhnya multimodal. Tambahkan kode, PDF, markdown, tangkapan layar, diagram, foto papan tulis, gambar dalam bahasa lain, atau file video dan audio — graph3d mengekstrak konsep dan hubungan dari semuanya dan menghubungkannya dalam satu graf. Video ditranskrip secara lokal dengan Whisper. Mendukung 25 bahasa pemrograman melalui tree-sitter AST.
 
-> Andrej Karpathy memelihara folder `/raw` tempat ia menyimpan makalah, tweet, tangkapan layar, dan catatan. graphify adalah jawaban untuk masalah itu — **71,5x** lebih sedikit token per kueri dibandingkan membaca file mentah, persisten di antara sesi.
-
-```
-/graphify .
-```
+> Andrej Karpathy memelihara folder `/raw` tempat ia menyimpan makalah, tweet, tangkapan layar, dan catatan. graph3d adalah jawaban untuk masalah itu — **71,5x** lebih sedikit token per kueri dibandingkan membaca file mentah, persisten di antara sesi.
 
 ```
-graphify-out/
+/graph3d .
+```
+
+```
+graph3d-out/
 ├── graph.html       graf interaktif — buka di browser mana saja
 ├── GRAPH_REPORT.md  node dewa, koneksi mengejutkan, pertanyaan yang disarankan
 ├── graph.json       graf persisten — dapat dikueri berminggu-minggu kemudian
@@ -33,7 +33,7 @@ graphify-out/
 
 ## Cara Kerja
 
-graphify bekerja dalam tiga tahap. Pertama, tahap AST deterministik mengekstrak struktur dari file kode tanpa LLM. Kemudian file video dan audio ditranskrip secara lokal dengan faster-whisper. Terakhir, sub-agen Claude berjalan secara paralel pada dokumen, makalah, gambar, dan transkripsi. Hasilnya digabungkan ke dalam graf NetworkX, dikelompokkan dengan Leiden, dan diekspor sebagai HTML interaktif, JSON yang dapat dikueri, dan laporan audit.
+graph3d bekerja dalam tiga tahap. Pertama, tahap AST deterministik mengekstrak struktur dari file kode tanpa LLM. Kemudian file video dan audio ditranskrip secara lokal dengan faster-whisper. Terakhir, sub-agen Claude berjalan secara paralel pada dokumen, makalah, gambar, dan transkripsi. Hasilnya digabungkan ke dalam graf NetworkX, dikelompokkan dengan Leiden, dan diekspor sebagai HTML interaktif, JSON yang dapat dikueri, dan laporan audit.
 
 Setiap hubungan diberi label `EXTRACTED`, `INFERRED` (dengan skor kepercayaan), atau `AMBIGUOUS`.
 
@@ -42,24 +42,24 @@ Setiap hubungan diberi label `EXTRACTED`, `INFERRED` (dengan skor kepercayaan), 
 **Persyaratan:** Python 3.10+ dan salah satu dari: [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex), [OpenCode](https://opencode.ai), [Cursor](https://cursor.com) dan lainnya.
 
 ```bash
-uv tool install graphifyy && graphify install
+uv tool install graph3d && graph3d install
 # atau dengan pipx
-pipx install graphifyy && graphify install
+pipx install graph3d && graph3d install
 # atau pip
-pip install graphifyy && graphify install
+pip install graph3d && graph3d install
 ```
 
-> **Paket resmi:** Paket PyPI bernama `graphifyy`. Satu-satunya repositori resmi adalah [safishamsi/graphify](https://github.com/safishamsi/graphify).
+> **Paket resmi:** Paket PyPI bernama `graph3d`. Satu-satunya repositori resmi adalah [DarbotLM/graph3d](https://github.com/DarbotLM/graph3d).
 
 ## Penggunaan
 
 ```
-/graphify .
-/graphify ./raw --update
-/graphify query "apa yang menghubungkan Attention dengan optimizer?"
-/graphify path "DigestAuth" "Response"
-graphify hook install
-graphify update ./src
+/graph3d .
+/graph3d ./raw --update
+/graph3d query "apa yang menghubungkan Attention dengan optimizer?"
+/graph3d path "DigestAuth" "Response"
+graph3d hook install
+graph3d update ./src
 ```
 
 ## Apa yang Anda Dapatkan
@@ -70,8 +70,8 @@ graphify update ./src
 
 File kode diproses secara lokal melalui tree-sitter AST. Video ditranskrip secara lokal dengan faster-whisper. Tidak ada telemetri.
 
-## Dibangun di atas graphify — Penpax
+## Dibangun di atas graph3d — Penpax
 
-[**Penpax**](https://safishamsi.github.io/penpax.ai) adalah lapisan enterprise di atas graphify. **Uji coba gratis segera hadir.** [Bergabunglah dengan daftar tunggu →](https://safishamsi.github.io/penpax.ai)
+[**Penpax**](https://safishamsi.github.io/penpax.ai) adalah lapisan enterprise di atas graph3d. **Uji coba gratis segera hadir.** [Bergabunglah dengan daftar tunggu →](https://safishamsi.github.io/penpax.ai)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=safishamsi/graphify&type=Date)](https://star-history.com/#safishamsi/graphify&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=DarbotLM/graph3d&type=Date)](https://star-history.com/#DarbotLM/graph3d&Date)

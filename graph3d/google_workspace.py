@@ -3,7 +3,7 @@
 Google Drive for desktop stores native Docs, Sheets, and Slides as small JSON
 shortcut files (.gdoc, .gsheet, .gslides). Those files are pointers, not the
 document content. This module exports them to Markdown sidecars via the
-googleworkspace CLI (`gws`) so Graphify can extract their actual contents.
+googleworkspace CLI (`gws`) so Graph3d can extract their actual contents.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ GOOGLE_WORKSPACE_EXTENSIONS = {".gdoc", ".gsheet", ".gslides"}
 
 def google_workspace_enabled(value: str | None = None) -> bool:
     """Return True when Google Workspace shortcut export is enabled."""
-    raw = value if value is not None else os.environ.get("GRAPHIFY_GOOGLE_WORKSPACE", "")
+    raw = value if value is not None else os.environ.get("GRAPH3D_GOOGLE_WORKSPACE", "")
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
@@ -106,7 +106,7 @@ def _run_gws_export(file_id: str, mime_type: str, output: Path, resource_key: st
     _ = resource_key
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
-    timeout = int(os.environ.get("GRAPHIFY_GOOGLE_WORKSPACE_TIMEOUT", "120"))
+    timeout = int(os.environ.get("GRAPH3D_GOOGLE_WORKSPACE_TIMEOUT", "120"))
     result = subprocess.run(
         [exe, "drive", "files", "export", "--params", json.dumps(params), "-o", output.name],
         capture_output=True,
@@ -194,7 +194,7 @@ def convert_google_workspace_file(
 
     if ext == ".gsheet":
         if xlsx_to_markdown is None:
-            raise RuntimeError("Google Sheets export requires the office extra: pip install graphifyy[office,google]")
+            raise RuntimeError("Google Sheets export requires the office extra: pip install graph3d[office,google]")
         with tempfile.NamedTemporaryFile("w+b", suffix=".xlsx", delete=False, dir=out_dir) as tmp:
             tmp_path = Path(tmp.name)
         try:

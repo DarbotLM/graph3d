@@ -1,6 +1,6 @@
 # httpx Corpus Benchmark
 
-A synthetic 6-file Python codebase modeled after httpx's architecture. Tests graphify on a realistic library with clean layering: exceptions → models → auth/transport → client.
+A synthetic 6-file Python codebase modeled after httpx's architecture. Tests graph3d on a realistic library with clean layering: exceptions → models → auth/transport → client.
 
 ## Corpus (6 files)
 
@@ -17,18 +17,18 @@ raw/
 ## How to run
 
 ```bash
-pip install graphifyy
+pip install graph3d
 
-graphify install                        # Claude Code
-graphify install --platform codex       # Codex
-graphify install --platform opencode    # OpenCode
-graphify install --platform claw        # OpenClaw
+graph3d install                        # Claude Code
+graph3d install --platform codex       # Codex
+graph3d install --platform opencode    # OpenCode
+graph3d install --platform claw        # OpenClaw
 ```
 
 Then open your AI coding assistant in this directory and type:
 
 ```
-/graphify ./raw
+/graph3d ./raw
 ```
 
 ## What to expect
@@ -38,6 +38,6 @@ Then open your AI coding assistant in this directory and type:
 - Surprising connection: `DigestAuth` linked to `Response` — auth.py reads Response to parse WWW-Authenticate headers
 - Token reduction: ~1x — 6 files fits in a context window, so there is no compression win here
 
-The graph value on a small corpus is structural, not compressive: you can see the full dependency graph, identify god nodes, and understand architecture at a glance. Token reduction scales with corpus size — at 52 files (Karpathy benchmark) graphify achieves 71.5x.
+The graph value on a small corpus is structural, not compressive: you can see the full dependency graph, identify god nodes, and understand architecture at a glance. Token reduction scales with corpus size — at 52 files (Karpathy benchmark) graph3d achieves 71.5x.
 
-Run `graphify benchmark worked/httpx/graph.json` to verify the numbers. Actual output is in this folder: `GRAPH_REPORT.md` and `graph.json`. Full eval: `review.md`.
+Run `graph3d benchmark worked/httpx/graph.json` to verify the numbers. Actual output is in this folder: `GRAPH_REPORT.md` and `graph.json`. Full eval: `review.md`.

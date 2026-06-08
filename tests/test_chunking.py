@@ -1,4 +1,4 @@
-"""Tests for token-aware chunking and parallel chunk execution in graphify.llm."""
+"""Tests for token-aware chunking and parallel chunk execution in graph3d.llm."""
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -12,7 +12,7 @@ def no_tokenizer():
     of whether tiktoken is installed in the test environment. tiktoken's BPE
     compresses repeated/synthetic content heavily, which would make pack-size
     assertions tied to specific input sizes flaky."""
-    from graphify import llm
+    from graph3d import llm
     with patch.object(llm, "_TOKENIZER", None):
         yield
 
@@ -21,7 +21,7 @@ def no_tokenizer():
 
 def test_pack_chunks_packs_small_files_together(tmp_path):
     """Many small files should land in a single chunk, not one chunk per file."""
-    from graphify.llm import _pack_chunks_by_tokens
+    from graph3d.llm import _pack_chunks_by_tokens
 
     files = []
     for i in range(20):
@@ -41,7 +41,7 @@ def test_pack_chunks_starts_new_chunk_when_budget_would_overflow(tmp_path, no_to
     Budget 6000 fits two (5040 < 6000) but not three (7560 > 6000).
     Five files → 2/2/1 = three chunks.
     """
-    from graphify.llm import _pack_chunks_by_tokens
+    from graph3d.llm import _pack_chunks_by_tokens
 
     files = []
     for i in range(5):
@@ -57,7 +57,7 @@ def test_pack_chunks_starts_new_chunk_when_budget_would_overflow(tmp_path, no_to
 
 def test_pack_chunks_groups_by_directory(tmp_path):
     """Files in the same directory should land in the same chunk when they fit."""
-    from graphify.llm import _pack_chunks_by_tokens
+    from graph3d.llm import _pack_chunks_by_tokens
 
     dir_a = tmp_path / "a"
     dir_b = tmp_path / "b"
@@ -85,7 +85,7 @@ def test_pack_chunks_groups_by_directory(tmp_path):
 
 def test_pack_chunks_oversized_file_gets_its_own_chunk(tmp_path, no_tokenizer):
     """A file larger than the budget can't be split — it goes alone in a chunk."""
-    from graphify.llm import _pack_chunks_by_tokens
+    from graph3d.llm import _pack_chunks_by_tokens
 
     big = tmp_path / "big.py"; big.write_text("x" * 200_000)  # ~50k tokens (cap-bound)
     small = tmp_path / "small.py"; small.write_text("x")
@@ -98,7 +98,7 @@ def test_pack_chunks_oversized_file_gets_its_own_chunk(tmp_path, no_tokenizer):
 
 
 def test_pack_chunks_rejects_non_positive_budget(tmp_path):
-    from graphify.llm import _pack_chunks_by_tokens
+    from graph3d.llm import _pack_chunks_by_tokens
 
     f = tmp_path / "x.py"; f.write_text("a")
     with pytest.raises(ValueError):
@@ -110,7 +110,7 @@ def test_pack_chunks_rejects_non_positive_budget(tmp_path):
 def test_estimate_file_tokens_uses_tiktoken_when_available(tmp_path):
     """When tiktoken is installed, the estimator should call into it for
     accurate counts rather than the chars/4 heuristic."""
-    from graphify import llm
+    from graph3d import llm
 
     f = tmp_path / "sample.py"
     text = "def hello():\n    return 'world'\n" * 50  # ~1500 chars
@@ -126,7 +126,7 @@ def test_estimate_file_tokens_uses_tiktoken_when_available(tmp_path):
 
 def test_estimate_file_tokens_falls_back_to_chars_when_no_tokenizer(tmp_path):
     """Without tiktoken installed, the estimator falls back to chars/4."""
-    from graphify import llm
+    from graph3d import llm
 
     f = tmp_path / "sample.py"
     f.write_text("x" * 1_000)  # 1000 bytes
@@ -153,7 +153,7 @@ def _stub_chunk_result(file_count: int, idx: int) -> dict:
 def test_corpus_parallel_runs_chunks_concurrently(tmp_path):
     """With max_concurrency > 1, total wall time should be ~max(chunk times),
     not the sum. Each stub extraction sleeps; we assert wall time."""
-    from graphify.llm import extract_corpus_parallel
+    from graph3d.llm import extract_corpus_parallel
 
     files = []
     for i in range(8):
@@ -164,7 +164,7 @@ def test_corpus_parallel_runs_chunks_concurrently(tmp_path):
         time.sleep(0.3)
         return _stub_chunk_result(len(chunk), 0)
 
-    with patch("graphify.llm.extract_files_direct", side_effect=slow_extract):
+    with patch("graph3d.llm.extract_files_direct", side_effect=slow_extract):
         t0 = time.time()
         # Force 4 chunks of 2 files each by setting a tight token budget.
         result = extract_corpus_parallel(
@@ -179,7 +179,7 @@ def test_corpus_parallel_runs_chunks_concurrently(tmp_path):
 
 def test_corpus_parallel_sequential_when_max_concurrency_is_one(tmp_path):
     """max_concurrency=1 should run sequentially (no thread pool)."""
-    from graphify.llm import extract_corpus_parallel
+    from graph3d.llm import extract_corpus_parallel
 
     files = []
     for i in range(3):
@@ -192,7 +192,7 @@ def test_corpus_parallel_sequential_when_max_concurrency_is_one(tmp_path):
         call_order.append(tuple(p.name for p in chunk))
         return _stub_chunk_result(len(chunk), len(call_order))
 
-    with patch("graphify.llm.extract_files_direct", side_effect=record):
+    with patch("graph3d.llm.extract_files_direct", side_effect=record):
         extract_corpus_parallel(
             files, backend="kimi", token_budget=None, chunk_size=1, max_concurrency=1
         )
@@ -204,7 +204,7 @@ def test_corpus_parallel_sequential_when_max_concurrency_is_one(tmp_path):
 def test_corpus_parallel_continues_after_chunk_failure(tmp_path, capsys):
     """A single chunk raising should be logged but not abort the run.
     Other chunks' results should still be merged."""
-    from graphify.llm import extract_corpus_parallel
+    from graph3d.llm import extract_corpus_parallel
 
     files = []
     for i in range(4):
@@ -219,7 +219,7 @@ def test_corpus_parallel_continues_after_chunk_failure(tmp_path, capsys):
             raise RuntimeError("simulated API error")
         return _stub_chunk_result(len(chunk), call_count["n"])
 
-    with patch("graphify.llm.extract_files_direct", side_effect=maybe_fail):
+    with patch("graph3d.llm.extract_files_direct", side_effect=maybe_fail):
         result = extract_corpus_parallel(
             files, backend="kimi", token_budget=None, chunk_size=1, max_concurrency=1
         )
@@ -232,7 +232,7 @@ def test_corpus_parallel_continues_after_chunk_failure(tmp_path, capsys):
 
 def test_corpus_parallel_legacy_mode_when_token_budget_is_none(tmp_path):
     """token_budget=None should fall back to legacy fixed-count chunking."""
-    from graphify.llm import extract_corpus_parallel
+    from graph3d.llm import extract_corpus_parallel
 
     files = []
     for i in range(45):
@@ -245,7 +245,7 @@ def test_corpus_parallel_legacy_mode_when_token_budget_is_none(tmp_path):
         chunks_seen.append(len(chunk))
         return _stub_chunk_result(len(chunk), len(chunks_seen))
 
-    with patch("graphify.llm.extract_files_direct", side_effect=record):
+    with patch("graph3d.llm.extract_files_direct", side_effect=record):
         extract_corpus_parallel(
             files, backend="kimi", token_budget=None, chunk_size=20, max_concurrency=1
         )
@@ -256,7 +256,7 @@ def test_corpus_parallel_legacy_mode_when_token_budget_is_none(tmp_path):
 
 def test_corpus_parallel_token_budget_default_packs_files(tmp_path):
     """With the default token_budget, many tiny files pack into one chunk."""
-    from graphify.llm import extract_corpus_parallel
+    from graph3d.llm import extract_corpus_parallel
 
     files = []
     for i in range(50):
@@ -269,7 +269,7 @@ def test_corpus_parallel_token_budget_default_packs_files(tmp_path):
         chunks_seen.append(len(chunk))
         return _stub_chunk_result(len(chunk), len(chunks_seen))
 
-    with patch("graphify.llm.extract_files_direct", side_effect=record):
+    with patch("graph3d.llm.extract_files_direct", side_effect=record):
         extract_corpus_parallel(files, backend="kimi", max_concurrency=1)
 
     # 50 tiny files at default 60k token budget should pack into 1 chunk
@@ -293,7 +293,7 @@ def _stub_with_finish(file_count: int, finish_reason: str = "stop") -> dict:
 
 def test_adaptive_retry_returns_directly_when_not_truncated(tmp_path):
     """No retry when finish_reason='stop' — single call, result passes through."""
-    from graphify.llm import _extract_with_adaptive_retry
+    from graph3d.llm import _extract_with_adaptive_retry
 
     files = [tmp_path / f"f{i}.py" for i in range(4)]
     for f in files:
@@ -305,7 +305,7 @@ def test_adaptive_retry_returns_directly_when_not_truncated(tmp_path):
         calls.append(len(chunk))
         return _stub_with_finish(len(chunk), finish_reason="stop")
 
-    with patch("graphify.llm.extract_files_direct", side_effect=stub):
+    with patch("graph3d.llm.extract_files_direct", side_effect=stub):
         result = _extract_with_adaptive_retry(
             files, backend="kimi", api_key=None, model=None, root=tmp_path, max_depth=3
         )
@@ -317,7 +317,7 @@ def test_adaptive_retry_returns_directly_when_not_truncated(tmp_path):
 def test_adaptive_retry_splits_when_finish_reason_length(tmp_path):
     """finish_reason='length' triggers split-in-half. Both halves succeed
     on the second try (mocked) and results merge."""
-    from graphify.llm import _extract_with_adaptive_retry
+    from graph3d.llm import _extract_with_adaptive_retry
 
     files = [tmp_path / f"f{i}.py" for i in range(4)]
     for f in files:
@@ -330,7 +330,7 @@ def test_adaptive_retry_splits_when_finish_reason_length(tmp_path):
         finish = "length" if len(chunk) == 4 else "stop"
         return _stub_with_finish(len(chunk), finish_reason=finish)
 
-    with patch("graphify.llm.extract_files_direct", side_effect=stub):
+    with patch("graph3d.llm.extract_files_direct", side_effect=stub):
         result = _extract_with_adaptive_retry(
             files, backend="kimi", api_key=None, model=None, root=tmp_path, max_depth=3
         )
@@ -343,7 +343,7 @@ def test_adaptive_retry_splits_when_finish_reason_length(tmp_path):
 def test_adaptive_retry_recurses_for_persistent_truncation(tmp_path):
     """When even the half-chunk truncates, split again. With 8 files and a
     truncation cutoff at >2 files, splits 8 → 4 → 2 (4 leaves of 2)."""
-    from graphify.llm import _extract_with_adaptive_retry
+    from graph3d.llm import _extract_with_adaptive_retry
 
     files = [tmp_path / f"f{i}.py" for i in range(8)]
     for f in files:
@@ -356,7 +356,7 @@ def test_adaptive_retry_recurses_for_persistent_truncation(tmp_path):
         finish = "length" if len(chunk) > 2 else "stop"
         return _stub_with_finish(len(chunk), finish_reason=finish)
 
-    with patch("graphify.llm.extract_files_direct", side_effect=stub):
+    with patch("graph3d.llm.extract_files_direct", side_effect=stub):
         result = _extract_with_adaptive_retry(
             files, backend="kimi", api_key=None, model=None, root=tmp_path, max_depth=3
         )
@@ -370,7 +370,7 @@ def test_adaptive_retry_recurses_for_persistent_truncation(tmp_path):
 def test_adaptive_retry_caps_at_max_depth(tmp_path, capsys):
     """If everything truncates, retries stop at max_depth — partial result
     kept with a warning, no infinite loop."""
-    from graphify.llm import _extract_with_adaptive_retry
+    from graph3d.llm import _extract_with_adaptive_retry
 
     files = [tmp_path / f"f{i}.py" for i in range(8)]
     for f in files:
@@ -382,7 +382,7 @@ def test_adaptive_retry_caps_at_max_depth(tmp_path, capsys):
         calls.append(len(chunk))
         return _stub_with_finish(len(chunk), finish_reason="length")
 
-    with patch("graphify.llm.extract_files_direct", side_effect=always_truncate):
+    with patch("graph3d.llm.extract_files_direct", side_effect=always_truncate):
         _extract_with_adaptive_retry(
             files, backend="kimi", api_key=None, model=None, root=tmp_path, max_depth=2
         )
@@ -396,7 +396,7 @@ def test_adaptive_retry_caps_at_max_depth(tmp_path, capsys):
 def test_adaptive_retry_single_file_truncation_does_not_recurse(tmp_path, capsys):
     """A single file that truncates can't be split further — surface a
     warning and return what we got. No infinite loop."""
-    from graphify.llm import _extract_with_adaptive_retry
+    from graph3d.llm import _extract_with_adaptive_retry
 
     f = tmp_path / "huge.py"; f.write_text("x")
 
@@ -406,7 +406,7 @@ def test_adaptive_retry_single_file_truncation_does_not_recurse(tmp_path, capsys
         calls.append(len(chunk))
         return _stub_with_finish(len(chunk), finish_reason="length")
 
-    with patch("graphify.llm.extract_files_direct", side_effect=stub):
+    with patch("graph3d.llm.extract_files_direct", side_effect=stub):
         _extract_with_adaptive_retry(
             [f], backend="kimi", api_key=None, model=None, root=tmp_path, max_depth=3
         )
@@ -420,7 +420,7 @@ def test_corpus_parallel_uses_adaptive_retry(tmp_path):
     """End-to-end: extract_corpus_parallel routes through adaptive retry,
     so a chunk that truncates gets split and merged transparently before
     on_chunk_done fires."""
-    from graphify.llm import extract_corpus_parallel
+    from graph3d.llm import extract_corpus_parallel
 
     files = [tmp_path / f"f{i}.py" for i in range(4)]
     for f in files:
@@ -434,7 +434,7 @@ def test_corpus_parallel_uses_adaptive_retry(tmp_path):
         return _stub_with_finish(len(chunk), finish_reason=finish)
 
     chunk_done_args = []
-    with patch("graphify.llm.extract_files_direct", side_effect=stub):
+    with patch("graph3d.llm.extract_files_direct", side_effect=stub):
         result = extract_corpus_parallel(
             files,
             backend="kimi",

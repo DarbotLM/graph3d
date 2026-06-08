@@ -8,7 +8,7 @@ def test_custom_provider_add_list_show_remove(tmp_path, monkeypatch):
     providers_file = tmp_path / "providers.json"
     providers_file.write_text("{}", encoding="utf-8")
 
-    from graphify import llm
+    from graph3d import llm
     monkeypatch.setattr(llm, "_custom_providers_path", lambda global_=True: providers_file if global_ else tmp_path / "local.json")
     monkeypatch.setattr(llm, "BACKENDS", {**llm.BACKENDS})
 
@@ -38,7 +38,7 @@ def test_custom_provider_pricing_defaults_to_zero(tmp_path):
         }
     }), encoding="utf-8")
 
-    from graphify import llm
+    from graph3d import llm
     import importlib
     from unittest.mock import patch
 
@@ -60,7 +60,7 @@ def test_custom_provider_cannot_shadow_builtin(tmp_path):
         }
     }), encoding="utf-8")
 
-    from graphify import llm
+    from graph3d import llm
     from unittest.mock import patch
 
     with patch.object(llm, "_custom_providers_path", side_effect=lambda global_=True: providers_file if global_ else tmp_path / "local.json"):
@@ -71,7 +71,7 @@ def test_custom_provider_cannot_shadow_builtin(tmp_path):
 
 def test_detect_backend_custom_provider_after_builtins(monkeypatch):
     """Custom providers appear after all built-ins in detect_backend() priority."""
-    from graphify import llm
+    from graph3d import llm
 
     monkeypatch.setattr(llm, "BACKENDS", {
         **llm.BACKENDS,

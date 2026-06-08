@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/safishamsi/graphify/v4/docs/logo-text.svg" width="260" height="64" alt="Graphify"/>
+  <img src="https://raw.githubusercontent.com/DarbotLM/graph3d/v4/docs/logo-text.svg" width="260" height="64" alt="Graph3d"/>
 </p>
 
 <p align="center">
@@ -7,24 +7,24 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/safishamsi/graphify/actions/workflows/ci.yml"><img src="https://github.com/safishamsi/graphify/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
-  <a href="https://pypi.org/project/graphifyy/"><img src="https://img.shields.io/pypi/v/graphifyy" alt="PyPI"/></a>
-  <a href="https://pepy.tech/project/graphifyy"><img src="https://static.pepy.tech/badge/graphifyy" alt="Downloads"/></a>
+  <a href="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml"><img src="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
+  <a href="https://pypi.org/project/graph3d/"><img src="https://img.shields.io/pypi/v/graph3d" alt="PyPI"/></a>
+  <a href="https://pepy.tech/project/graph3d"><img src="https://static.pepy.tech/badge/graph3d" alt="Downloads"/></a>
   <a href="https://github.com/sponsors/safishamsi"><img src="https://img.shields.io/badge/sponsor-safishamsi-ea4aaa?logo=github-sponsors" alt="Sponsor"/></a>
 </p>
 
-**Umiejętność dla asystenta kodowania AI.** Wpisz `/graphify` w Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro lub Google Antigravity — czyta Twoje pliki, buduje graf wiedzy i zwraca Ci strukturę, o której nie wiedziałeś, że istnieje. Rozumiej bazę kodu szybciej. Znajdź „dlaczego" za decyzjami architektonicznymi.
+**Umiejętność dla asystenta kodowania AI.** Wpisz `/graph3d` w Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro lub Google Antigravity — czyta Twoje pliki, buduje graf wiedzy i zwraca Ci strukturę, o której nie wiedziałeś, że istnieje. Rozumiej bazę kodu szybciej. Znajdź „dlaczego" za decyzjami architektonicznymi.
 
-W pełni multimodalny. Dodaj kod, PDF, markdown, zrzuty ekranu, diagramy, zdjęcia tablic, obrazy w innych językach lub pliki wideo i audio — graphify wyodrębnia koncepcje i relacje ze wszystkiego i łączy je w jeden graf. Wideo są transkrybowane lokalnie za pomocą Whisper. Obsługuje 25 języków programowania przez tree-sitter AST.
+W pełni multimodalny. Dodaj kod, PDF, markdown, zrzuty ekranu, diagramy, zdjęcia tablic, obrazy w innych językach lub pliki wideo i audio — graph3d wyodrębnia koncepcje i relacje ze wszystkiego i łączy je w jeden graf. Wideo są transkrybowane lokalnie za pomocą Whisper. Obsługuje 25 języków programowania przez tree-sitter AST.
 
-> Andrej Karpathy prowadzi folder `/raw`, gdzie wrzuca artykuły, tweety, zrzuty ekranu i notatki. graphify jest odpowiedzią na ten problem — **71,5x** mniej tokenów na zapytanie w porównaniu z czytaniem surowych plików, trwały między sesjami.
-
-```
-/graphify .                        # działa na dowolnym folderze
-```
+> Andrej Karpathy prowadzi folder `/raw`, gdzie wrzuca artykuły, tweety, zrzuty ekranu i notatki. graph3d jest odpowiedzią na ten problem — **71,5x** mniej tokenów na zapytanie w porównaniu z czytaniem surowych plików, trwały między sesjami.
 
 ```
-graphify-out/
+/graph3d .                        # działa na dowolnym folderze
+```
+
+```
+graph3d-out/
 ├── graph.html       interaktywny graf — otwórz w dowolnej przeglądarce
 ├── GRAPH_REPORT.md  węzły boga, zaskakujące połączenia, sugerowane pytania
 ├── graph.json       trwały graf — zapytaj tygodnie później
@@ -33,7 +33,7 @@ graphify-out/
 
 ## Jak to działa
 
-graphify działa w trzech przebiegach. Najpierw deterministyczny przebieg AST wyodrębnia strukturę z plików kodu bez LLM. Następnie pliki wideo i audio są transkrybowane lokalnie za pomocą faster-whisper. Na koniec subagenci Claude działają równolegle na dokumentach, artykułach, obrazach i transkrypcjach. Wyniki są łączone w graf NetworkX, grupowane za pomocą Leiden i eksportowane jako interaktywny HTML, JSON i raport audytu.
+graph3d działa w trzech przebiegach. Najpierw deterministyczny przebieg AST wyodrębnia strukturę z plików kodu bez LLM. Następnie pliki wideo i audio są transkrybowane lokalnie za pomocą faster-whisper. Na koniec subagenci Claude działają równolegle na dokumentach, artykułach, obrazach i transkrypcjach. Wyniki są łączone w graf NetworkX, grupowane za pomocą Leiden i eksportowane jako interaktywny HTML, JSON i raport audytu.
 
 Każda relacja jest oznaczona `EXTRACTED`, `INFERRED` (z wynikiem pewności) lub `AMBIGUOUS`.
 
@@ -42,25 +42,25 @@ Każda relacja jest oznaczona `EXTRACTED`, `INFERRED` (z wynikiem pewności) lub
 **Wymagania:** Python 3.10+ i jedno z: [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex), [OpenCode](https://opencode.ai), [Cursor](https://cursor.com) i inne.
 
 ```bash
-uv tool install graphifyy && graphify install
+uv tool install graph3d && graph3d install
 # lub z pipx
-pipx install graphifyy && graphify install
+pipx install graph3d && graph3d install
 # lub pip
-pip install graphifyy && graphify install
+pip install graph3d && graph3d install
 ```
 
-> **Oficjalny pakiet:** Pakiet PyPI nazywa się `graphifyy`. Jedyne oficjalne repozytorium to [safishamsi/graphify](https://github.com/safishamsi/graphify).
+> **Oficjalny pakiet:** Pakiet PyPI nazywa się `graph3d`. Jedyne oficjalne repozytorium to [DarbotLM/graph3d](https://github.com/DarbotLM/graph3d).
 
 ## Użycie
 
 ```
-/graphify .
-/graphify ./raw --update           # tylko zmienione pliki
-/graphify ./raw --mode deep
-/graphify query "co łączy Attention z optymalizatorem?"
-/graphify path "DigestAuth" "Response"
-graphify hook install
-graphify update ./src
+/graph3d .
+/graph3d ./raw --update           # tylko zmienione pliki
+/graph3d ./raw --mode deep
+/graph3d query "co łączy Attention z optymalizatorem?"
+/graph3d path "DigestAuth" "Response"
+graph3d hook install
+graph3d update ./src
 ```
 
 ## Co otrzymujesz
@@ -71,8 +71,8 @@ graphify update ./src
 
 Pliki kodu są przetwarzane lokalnie przez tree-sitter AST. Wideo transkrybowane lokalnie z faster-whisper. Brak telemetrii.
 
-## Zbudowane na graphify — Penpax
+## Zbudowane na graph3d — Penpax
 
-[**Penpax**](https://safishamsi.github.io/penpax.ai) to warstwa enterprise nad graphify. **Bezpłatna wersja próbna wkrótce.** [Dołącz do listy oczekujących →](https://safishamsi.github.io/penpax.ai)
+[**Penpax**](https://safishamsi.github.io/penpax.ai) to warstwa enterprise nad graph3d. **Bezpłatna wersja próbna wkrótce.** [Dołącz do listy oczekujących →](https://safishamsi.github.io/penpax.ai)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=safishamsi/graphify&type=Date)](https://star-history.com/#safishamsi/graphify&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=DarbotLM/graph3d&type=Date)](https://star-history.com/#DarbotLM/graph3d&Date)

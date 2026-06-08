@@ -1,7 +1,7 @@
 """scip_ingest.py — SCIP JSON ingestion (simplified subset).
 
 Reads a simplified SCIP-style JSON structure and converts it into
-Graphify nodes and edges. NOT a full SCIP protobuf implementation —
+Graph3d nodes and edges. NOT a full SCIP protobuf implementation —
 this is a skeleton that consumes the simplified shape described below.
 
 Not wired to the CLI in this phase.
@@ -10,7 +10,7 @@ Entry point:
   ingest_scip_json(doc: object, source_file: str = "",
       language: str = "python") -> dict[str, Any]
 
-  Returns {"nodes": [...], "edges": [...]} compatible with Graphify's
+  Returns {"nodes": [...], "edges": [...]} compatible with Graph3d's
   extraction result format. All edges emitted are endpoint-safe — the
   function builds a symbol → node_id index in a first pass and either
   resolves relationship targets via that index or creates a stub
@@ -36,7 +36,7 @@ import hashlib
 import re
 from typing import Any
 
-from graphify.security import sanitize_metadata
+from graph3d.security import sanitize_metadata
 
 
 def ingest_scip_json(
@@ -44,7 +44,7 @@ def ingest_scip_json(
     source_file: str = "",
     language: str = "python",
 ) -> dict[str, Any]:
-    """Convert a SCIP-style JSON document into Graphify nodes and edges.
+    """Convert a SCIP-style JSON document into Graph3d nodes and edges.
 
     Parameter ``doc`` is ``object`` (not ``dict[str, Any]``) because SCIP
     documents come from external tools — we may be handed arbitrary
@@ -283,7 +283,7 @@ def _is_true(value: object) -> bool:
 
 
 def _scip_relation_for(rel: dict[str, Any]) -> str:
-    """Pick the Graphify relation tag for a SCIP relationship dict.
+    """Pick the Graph3d relation tag for a SCIP relationship dict.
 
     Flags are accepted only when the value is exactly ``True`` — protects
     against truthy-but-misleading values like ``"false"`` in external JSON.
@@ -328,7 +328,7 @@ def _coerce_str(value: object, default: str) -> str:
 
 
 def _make_scip_node_id(symbol: str, source_file: str) -> str:
-    """Derive a stable Graphify node ID from a SCIP symbol identifier.
+    """Derive a stable Graph3d node ID from a SCIP symbol identifier.
 
     Uses SHA-1 truncated to 12 hex chars (48 bits). This is an identifier,
     not a security boundary — collision risk is acceptable at this scale
@@ -345,7 +345,7 @@ def _make_scip_node_id(symbol: str, source_file: str) -> str:
 
 
 def _scip_kind_to_file_type(kind: str) -> str:
-    """Map SCIP symbol kind to a Graphify file_type."""
+    """Map SCIP symbol kind to a Graph3d file_type."""
     # All SCIP symbols are code entities (functions, methods, classes, …);
     # the `kind` is preserved in metadata for downstream consumers.
     _ = kind  # acknowledged but not currently used for file_type routing

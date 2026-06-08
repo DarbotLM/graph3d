@@ -10,7 +10,7 @@ from pathlib import Path
 from collections.abc import Sequence
 from typing import Any
 
-from graphify.security import sanitize_metadata
+from graph3d.security import sanitize_metadata
 
 
 
@@ -111,7 +111,7 @@ def iter_raw_calls(per_file: Sequence[object]) -> list[dict[str, Any]]:
 
 
 def _module_stem(module_name: str | None) -> str:
-    """Return the final module component used to match Graphify source stems."""
+    """Return the final module component used to match Graph3d source stems."""
 
     if not module_name:
         return ""
@@ -205,7 +205,7 @@ def find_unique_python_symbol(
     symbol_index: dict[tuple[str, str], list[str]],
     imported: ImportedSymbol,
 ) -> str | None:
-    """Resolve one imported symbol to exactly one Graphify node id."""
+    """Resolve one imported symbol to exactly one Graph3d node id."""
 
     candidates = symbol_index.get((imported.module_stem, imported.imported_name.lower()), [])
     if len(candidates) == 1:
@@ -309,7 +309,7 @@ def resolve_cross_file_raw_calls(
 ) -> list[dict[str, Any]]:
     """Resolve unqualified raw calls conservatively after all files are known.
 
-    This intentionally preserves Graphify's existing behavior:
+    This intentionally preserves Graph3d's existing behavior:
     - member calls are skipped;
     - ambiguous labels are skipped;
     - only a single unique candidate is emitted;
@@ -398,12 +398,12 @@ def resolve_bash_source_edges(
     those lists, and missing/empty ``id`` / ``target_path`` / ``caller_nid``
     fields all yield silent skips rather than ``KeyError``.
 
-    ``bash_sources[].target_path`` contract (Graphify static-analysis policy):
+    ``bash_sources[].target_path`` contract (Graph3d static-analysis policy):
         - Absolute paths: resolved as-is.
         - Relative paths: resolved against the *source file's* directory
           (i.e. ``Path(path).parent / target_path``).
           NOTE: this is a deterministic static-analysis policy chosen by
-          Graphify, NOT bash runtime semantics. At runtime, ``source ./X``
+          Graph3d, NOT bash runtime semantics. At runtime, ``source ./X``
           is resolved against the shell's current working directory. We
           prefer source-file-relative because static analysis cannot know
           the future CWD; resolving against the file being analyzed gives
@@ -454,7 +454,7 @@ def resolve_bash_source_edges(
             if not isinstance(raw_target, (str, Path)) or not str(raw_target).strip():
                 continue
             # Relative paths resolve against the source file's directory —
-            # Graphify static-analysis policy (NOT bash runtime semantics;
+            # Graph3d static-analysis policy (NOT bash runtime semantics;
             # at runtime `source ./X` is CWD-relative, but static analysis
             # can't know the future CWD, so we resolve relative to the
             # file being analyzed for deterministic, reproducible edges).

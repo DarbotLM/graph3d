@@ -92,7 +92,7 @@ def _ssrf_guarded_socket():
 
     Validates every IP that urllib resolves so a DNS server cannot return a public IP
     for validate_url and swap to a private IP for the actual connection (TOCTOU fix).
-    Not thread-safe, but graphify is a single-threaded CLI tool.
+    Not thread-safe, but graph3d is a single-threaded CLI tool.
     """
     original = socket.getaddrinfo
 
@@ -155,7 +155,7 @@ def safe_fetch(url: str, max_bytes: int = _MAX_FETCH_BYTES, timeout: int = 30) -
     """
     validate_url(url)
     opener = _build_opener()
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 graphify/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 graph3d/1.0"})
 
     with _ssrf_guarded_socket(), opener.open(req, timeout=timeout) as resp:
         # urllib raises HTTPError for non-2xx when using urlopen directly;
@@ -197,9 +197,9 @@ def safe_fetch_text(url: str, max_bytes: int = _MAX_TEXT_BYTES, timeout: int = 1
 def validate_graph_path(path: str | Path, base: Path | None = None) -> Path:
     """Resolve *path* and verify it stays inside *base*.
 
-    *base* defaults to the `graphify-out` directory relative to CWD.
+    *base* defaults to the `graph3d-out` directory relative to CWD.
     Also requires the base directory to exist, so a caller cannot
-    trick graphify into reading files before any graph has been built.
+    trick graph3d into reading files before any graph has been built.
 
     Raises:
         ValueError  - path escapes base, or base does not exist
@@ -208,17 +208,17 @@ def validate_graph_path(path: str | Path, base: Path | None = None) -> Path:
     if base is None:
         resolved_hint = Path(path).resolve()
         for candidate in [resolved_hint, *resolved_hint.parents]:
-            if candidate.name == "graphify-out":
+            if candidate.name == "graph3d-out":
                 base = candidate
                 break
         if base is None:
-            base = Path("graphify-out").resolve()
+            base = Path("graph3d-out").resolve()
 
     base = base.resolve()
     if not base.exists():
         raise ValueError(
             f"Graph base directory does not exist: {base}. "
-            "Run /graphify first to build the graph."
+            "Run /graph3d first to build the graph."
         )
 
     resolved = Path(path).resolve()
@@ -227,7 +227,7 @@ def validate_graph_path(path: str | Path, base: Path | None = None) -> Path:
     except ValueError:
         raise ValueError(
             f"Path {path!r} escapes the allowed directory {base}. "
-            "Only paths inside graphify-out/ are permitted."
+            "Only paths inside graph3d-out/ are permitted."
         )
 
     if not resolved.exists():

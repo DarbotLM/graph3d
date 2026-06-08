@@ -3,7 +3,7 @@
 #
 # Currently called from the skill merge scripts (skill-opencode.md,
 # skill-codex.md) so that rationale text never leaks into the knowledge
-# graph as standalone nodes. (Future: graphify.llm may wire this into
+# graph as standalone nodes. (Future: graph3d.llm may wire this into
 # _parse_llm_json / _merge_into for non-skill code paths; not done in
 # this cycle.)
 from __future__ import annotations
@@ -21,7 +21,7 @@ _RATIONALE_MIN_WORDS = 8
 # validate_semantic_fragment(). Issue #825: returned-JSON normalization for
 # OpenCode and Codex agents requires a Python enforcement boundary so a
 # malicious or runaway agent response cannot exhaust memory or escape the
-# graphify-out chunk directory via crafted node/edge IDs.
+# graph3d-out chunk directory via crafted node/edge IDs.
 MAX_SEMANTIC_FRAGMENT_BYTES = 25 * 1024 * 1024
 MAX_SEMANTIC_FRAGMENT_NODES = 10_000
 MAX_SEMANTIC_FRAGMENT_EDGES = 100_000

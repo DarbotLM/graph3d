@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
-from graphify.build import build_from_json, build, build_merge, edge_data, edge_datas
+from graph3d.build import build_from_json, build, build_merge, edge_data, edge_datas
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -160,8 +160,8 @@ def test_build_merge_preserves_call_edge_direction(tmp_path):
     build_merge must read the saved JSON's source/target verbatim instead
     of round-tripping through NetworkX.
     """
-    from graphify.extract import extract_js
-    from graphify.export import to_json
+    from graph3d.extract import extract_js
+    from graph3d.export import to_json
 
     # Callee `b` is defined before caller `a` so node insertion order
     # is b, a. An undirected Graph then yields the edge as (b, a) on
@@ -230,7 +230,7 @@ def test_build_from_json_preserves_first_direction_on_bidirectional_pair(tmp_pat
     build_from_json must keep the first-seen direction for the surviving edge
     instead of letting the second add_edge overwrite _src/_tgt.
     """
-    from graphify.export import to_json
+    from graph3d.export import to_json
 
     # Lexicographic order of (src, tgt, rel) puts `a` < `z` first, so the sort
     # processes `a -> z` BEFORE `z -> a`. Without the fix, the second write
@@ -465,6 +465,6 @@ def test_build_merge_rejects_oversized_existing_graph(monkeypatch, tmp_path):
 
     graph_path = tmp_path / "graph.json"
     graph_path.write_text(json.dumps({"nodes": [], "links": []}), encoding="utf-8")
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 8)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 8)
     with pytest.raises(ValueError, match="exceeds"):
         build_merge([], graph_path, dedup=False)

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/safishamsi/graphify/v4/docs/logo-text.svg" width="260" height="64" alt="Graphify"/>
+  <img src="https://raw.githubusercontent.com/DarbotLM/graph3d/v4/docs/logo-text.svg" width="260" height="64" alt="Graph3d"/>
 </p>
 
 <p align="center">
@@ -7,24 +7,24 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/safishamsi/graphify/actions/workflows/ci.yml"><img src="https://github.com/safishamsi/graphify/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
-  <a href="https://pypi.org/project/graphifyy/"><img src="https://img.shields.io/pypi/v/graphifyy" alt="PyPI"/></a>
-  <a href="https://pepy.tech/project/graphifyy"><img src="https://static.pepy.tech/badge/graphifyy" alt="Downloads"/></a>
+  <a href="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml"><img src="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
+  <a href="https://pypi.org/project/graph3d/"><img src="https://img.shields.io/pypi/v/graph3d" alt="PyPI"/></a>
+  <a href="https://pepy.tech/project/graph3d"><img src="https://static.pepy.tech/badge/graph3d" alt="Downloads"/></a>
   <a href="https://github.com/sponsors/safishamsi"><img src="https://img.shields.io/badge/sponsor-safishamsi-ea4aaa?logo=github-sponsors" alt="Sponsor"/></a>
 </p>
 
-**En färdighet för AI-kodassistenter.** Skriv `/graphify` i Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro eller Google Antigravity — den läser dina filer, bygger ett kunskapsgrafer och ger tillbaka strukturen du inte visste fanns. Förstå en kodbas snabbare. Hitta "varför" bakom arkitekturella beslut.
+**En färdighet för AI-kodassistenter.** Skriv `/graph3d` i Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro eller Google Antigravity — den läser dina filer, bygger ett kunskapsgrafer och ger tillbaka strukturen du inte visste fanns. Förstå en kodbas snabbare. Hitta "varför" bakom arkitekturella beslut.
 
-Helt multimodal. Lägg till kod, PDF:er, markdown, skärmdumpar, diagram, whiteboardfoton, bilder på andra språk eller video- och ljudfiler — graphify extraherar begrepp och relationer från allt och kopplar samman dem i ett enda graf. Videor transkriberas lokalt med Whisper. Stödjer 25 programmeringsspråk via tree-sitter AST.
+Helt multimodal. Lägg till kod, PDF:er, markdown, skärmdumpar, diagram, whiteboardfoton, bilder på andra språk eller video- och ljudfiler — graph3d extraherar begrepp och relationer från allt och kopplar samman dem i ett enda graf. Videor transkriberas lokalt med Whisper. Stödjer 25 programmeringsspråk via tree-sitter AST.
 
-> Andrej Karpathy håller en `/raw`-mapp där han lägger papper, tweets, skärmdumpar och anteckningar. graphify är svaret på det problemet — **71,5x** färre tokens per fråga jämfört med att läsa råfiler, beständigt mellan sessioner.
-
-```
-/graphify .
-```
+> Andrej Karpathy håller en `/raw`-mapp där han lägger papper, tweets, skärmdumpar och anteckningar. graph3d är svaret på det problemet — **71,5x** färre tokens per fråga jämfört med att läsa råfiler, beständigt mellan sessioner.
 
 ```
-graphify-out/
+/graph3d .
+```
+
+```
+graph3d-out/
 ├── graph.html       interaktivt diagram — öppna i valfri webbläsare
 ├── GRAPH_REPORT.md  gudnoder, överraskande kopplingar, föreslagna frågor
 ├── graph.json       beständigt diagram — kan frågas veckor senare
@@ -33,7 +33,7 @@ graphify-out/
 
 ## Hur det fungerar
 
-graphify arbetar i tre pass. Först extraherar ett deterministiskt AST-pass struktur från kodfiler utan LLM. Sedan transkriberas video- och ljudfiler lokalt med faster-whisper. Slutligen kör Claude-subagenter parallellt på dokument, papper, bilder och transkriptioner. Resultaten slås samman i ett NetworkX-diagram, klustras med Leiden och exporteras som interaktiv HTML, frågebar JSON och revisionsrapport.
+graph3d arbetar i tre pass. Först extraherar ett deterministiskt AST-pass struktur från kodfiler utan LLM. Sedan transkriberas video- och ljudfiler lokalt med faster-whisper. Slutligen kör Claude-subagenter parallellt på dokument, papper, bilder och transkriptioner. Resultaten slås samman i ett NetworkX-diagram, klustras med Leiden och exporteras som interaktiv HTML, frågebar JSON och revisionsrapport.
 
 Varje relation är märkt `EXTRACTED`, `INFERRED` (med konfidenspoäng) eller `AMBIGUOUS`.
 
@@ -42,24 +42,24 @@ Varje relation är märkt `EXTRACTED`, `INFERRED` (med konfidenspoäng) eller `A
 **Krav:** Python 3.10+ och ett av: [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex), [OpenCode](https://opencode.ai), [Cursor](https://cursor.com) med flera.
 
 ```bash
-uv tool install graphifyy && graphify install
+uv tool install graph3d && graph3d install
 # eller med pipx
-pipx install graphifyy && graphify install
+pipx install graph3d && graph3d install
 # eller pip
-pip install graphifyy && graphify install
+pip install graph3d && graph3d install
 ```
 
-> **Officiellt paket:** PyPI-paketet heter `graphifyy`. Det enda officiella förrådet är [safishamsi/graphify](https://github.com/safishamsi/graphify).
+> **Officiellt paket:** PyPI-paketet heter `graph3d`. Det enda officiella förrådet är [DarbotLM/graph3d](https://github.com/DarbotLM/graph3d).
 
 ## Användning
 
 ```
-/graphify .
-/graphify ./raw --update
-/graphify query "vad kopplar Attention till optimizern?"
-/graphify path "DigestAuth" "Response"
-graphify hook install
-graphify update ./src
+/graph3d .
+/graph3d ./raw --update
+/graph3d query "vad kopplar Attention till optimizern?"
+/graph3d path "DigestAuth" "Response"
+graph3d hook install
+graph3d update ./src
 ```
 
 ## Vad du får
@@ -70,8 +70,8 @@ graphify update ./src
 
 Kodfiler behandlas lokalt via tree-sitter AST. Videor transkriberas lokalt med faster-whisper. Ingen telemetri.
 
-## Byggt på graphify — Penpax
+## Byggt på graph3d — Penpax
 
-[**Penpax**](https://safishamsi.github.io/penpax.ai) är enterprise-lagret ovanpå graphify. **Gratis provperiod kommer snart.** [Gå med i väntelistan →](https://safishamsi.github.io/penpax.ai)
+[**Penpax**](https://safishamsi.github.io/penpax.ai) är enterprise-lagret ovanpå graph3d. **Gratis provperiod kommer snart.** [Gå med i väntelistan →](https://safishamsi.github.io/penpax.ai)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=safishamsi/graphify&type=Date)](https://star-history.com/#safishamsi/graphify&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=DarbotLM/graph3d&type=Date)](https://star-history.com/#DarbotLM/graph3d&Date)

@@ -1,16 +1,16 @@
-"""graphify prs — graph-aware PR dashboard.
+"""graph3d prs — graph-aware PR dashboard.
 
 Fast terminal overview of open PRs with CI/review state, worktree mapping,
 and optional graph-impact analysis (which communities a PR touches) and
 Opus-powered triage ranking.
 
 Usage:
-  graphify prs                   # dashboard of all open PRs
-  graphify prs <number>          # deep dive on one PR
-  graphify prs --triage          # Opus ranks your review queue
-  graphify prs --worktrees       # show worktree → branch → PR mapping
-  graphify prs --conflicts       # PRs sharing graph communities (merge-order risk)
-  graphify prs --base <branch>   # filter to PRs targeting this base (default: v8)
+  graph3d prs                   # dashboard of all open PRs
+  graph3d prs <number>          # deep dive on one PR
+  graph3d prs --triage          # Opus ranks your review queue
+  graph3d prs --worktrees       # show worktree → branch → PR mapping
+  graph3d prs --conflicts       # PRs sharing graph communities (merge-order risk)
+  graph3d prs --base <branch>   # filter to PRs targeting this base (default: v8)
 """
 
 from __future__ import annotations
@@ -318,7 +318,7 @@ def fetch_worktrees() -> dict[str, str]:
 def _load_graph_json(graph_path: Path) -> dict | None:
     if not graph_path.exists():
         return None
-    from graphify.security import check_graph_file_size_cap
+    from graph3d.security import check_graph_file_size_cap
     try:
         check_graph_file_size_cap(graph_path)
         return json.loads(graph_path.read_text(encoding="utf-8"))
@@ -407,7 +407,7 @@ def render_dashboard(prs: list[PRInfo], base: str = "v8", show_wrong_base: bool 
     actionable.sort(key=lambda p: (_STATUS_ORDER.index(p.status) if p.status in _STATUS_ORDER else 99, p.days_old))
 
     print()
-    print(bold(f"  graphify prs  ·  base: {base}  ·  {len(actionable)} PRs"))
+    print(bold(f"  graph3d prs  ·  base: {base}  ·  {len(actionable)} PRs"))
     print()
 
     if not actionable:
@@ -551,19 +551,19 @@ _TRIAGE_MODEL_DEFAULTS: dict[str, str] = {
 
 
 def _resolve_triage_backend() -> tuple[str, str]:
-    """Return (backend, model) using GRAPHIFY_TRIAGE_BACKEND or first available key."""
-    from graphify.llm import BACKENDS, _get_backend_api_key, _default_model_for_backend
+    """Return (backend, model) using GRAPH3D_TRIAGE_BACKEND or first available key."""
+    from graph3d.llm import BACKENDS, _get_backend_api_key, _default_model_for_backend
 
-    explicit = os.environ.get("GRAPHIFY_TRIAGE_BACKEND", "").strip()
+    explicit = os.environ.get("GRAPH3D_TRIAGE_BACKEND", "").strip()
     if explicit in BACKENDS:
-        model = (os.environ.get("GRAPHIFY_TRIAGE_MODEL")
+        model = (os.environ.get("GRAPH3D_TRIAGE_MODEL")
                  or _TRIAGE_MODEL_DEFAULTS.get(explicit)
                  or _default_model_for_backend(explicit))
         return explicit, model
 
     for b in ("claude", "kimi", "openai", "gemini"):
         if _get_backend_api_key(b):
-            model = (os.environ.get("GRAPHIFY_TRIAGE_MODEL")
+            model = (os.environ.get("GRAPH3D_TRIAGE_MODEL")
                      or _TRIAGE_MODEL_DEFAULTS.get(b)
                      or _default_model_for_backend(b))
             return b, model
@@ -577,9 +577,9 @@ def _resolve_triage_backend() -> tuple[str, str]:
 
 def triage_with_opus(prs: list[PRInfo], base: str) -> None:
     try:
-        from graphify.llm import BACKENDS, _get_backend_api_key
+        from graph3d.llm import BACKENDS, _get_backend_api_key
     except ImportError:
-        print(red("  graphify.llm not available - cannot run triage."), file=sys.stderr)
+        print(red("  graph3d.llm not available - cannot run triage."), file=sys.stderr)
         sys.exit(1)
 
     candidates = [p for p in prs if p.base_branch == base and p.status not in ("WRONG-BASE", "STALE")]
@@ -673,7 +673,7 @@ def cmd_prs(argv: list[str]) -> None:
     do_conflicts = False
     show_wrong_base = False
     pr_number: int | None = None
-    graph_path = Path("graphify-out/graph.json")
+    graph_path = Path("graph3d-out/graph.json")
 
     i = 0
     while i < len(argv):

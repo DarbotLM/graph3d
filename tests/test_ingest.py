@@ -1,9 +1,9 @@
-"""Tests for graphify.ingest.save_query_result"""
+"""Tests for graph3d.ingest.save_query_result"""
 from __future__ import annotations
 import re
 from pathlib import Path
 import pytest
-from graphify.ingest import save_query_result
+from graph3d.ingest import save_query_result
 
 
 def test_file_created(tmp_path):

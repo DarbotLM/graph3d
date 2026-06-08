@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/safishamsi/graphify/v4/docs/logo-text.svg" width="260" height="64" alt="Graphify"/>
+  <img src="https://raw.githubusercontent.com/DarbotLM/graph3d/v4/docs/logo-text.svg" width="260" height="64" alt="Graph3d"/>
 </p>
 
 <p align="center">
@@ -7,24 +7,24 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/safishamsi/graphify/actions/workflows/ci.yml"><img src="https://github.com/safishamsi/graphify/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
-  <a href="https://pypi.org/project/graphifyy/"><img src="https://img.shields.io/pypi/v/graphifyy" alt="PyPI"/></a>
-  <a href="https://pepy.tech/project/graphifyy"><img src="https://static.pepy.tech/badge/graphifyy" alt="Downloads"/></a>
+  <a href="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml"><img src="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
+  <a href="https://pypi.org/project/graph3d/"><img src="https://img.shields.io/pypi/v/graph3d" alt="PyPI"/></a>
+  <a href="https://pepy.tech/project/graph3d"><img src="https://static.pepy.tech/badge/graph3d" alt="Downloads"/></a>
   <a href="https://github.com/sponsors/safishamsi"><img src="https://img.shields.io/badge/sponsor-safishamsi-ea4aaa?logo=github-sponsors" alt="Sponsor"/></a>
 </p>
 
-**Kasanayan para sa mga AI coding assistant.** I-type ang `/graphify` sa Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro, o Google Antigravity — binabasa nito ang iyong mga file, gumagawa ng knowledge graph, at ibinabalik sa iyo ang mga istrukturang hindi mo alam na nandoon pala. Maunawaan ang codebase nang mas mabilis. Tuklasin ang "bakit" sa likod ng mga desisyon sa arkitektura.
+**Kasanayan para sa mga AI coding assistant.** I-type ang `/graph3d` sa Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro, o Google Antigravity — binabasa nito ang iyong mga file, gumagawa ng knowledge graph, at ibinabalik sa iyo ang mga istrukturang hindi mo alam na nandoon pala. Maunawaan ang codebase nang mas mabilis. Tuklasin ang "bakit" sa likod ng mga desisyon sa arkitektura.
 
-Ganap na multimodal. Magdagdag ng code, PDF, markdown, mga screenshot, diagram, larawan ng whiteboard, mga imahe sa ibang wika, o mga video at audio file — kine-extract ng graphify ang mga konsepto at relasyon mula sa lahat ng ito at pinag-uugnay ang mga ito sa iisang graph. Ang mga video ay tina-transcribe nang lokal gamit ang Whisper. Sumusuporta ng 25 na programming language sa pamamagitan ng tree-sitter AST.
+Ganap na multimodal. Magdagdag ng code, PDF, markdown, mga screenshot, diagram, larawan ng whiteboard, mga imahe sa ibang wika, o mga video at audio file — kine-extract ng graph3d ang mga konsepto at relasyon mula sa lahat ng ito at pinag-uugnay ang mga ito sa iisang graph. Ang mga video ay tina-transcribe nang lokal gamit ang Whisper. Sumusuporta ng 25 na programming language sa pamamagitan ng tree-sitter AST.
 
-> Si Andrej Karpathy ay nagpapanatili ng `/raw` folder kung saan nilalagay niya ang mga papel, tweet, screenshot, at tala. Ang graphify ang sagot sa problemang iyon — **71.5x** na mas kaunting token bawat query kumpara sa pagbasa ng mga raw file, at persistent sa pagitan ng mga session.
-
-```
-/graphify .
-```
+> Si Andrej Karpathy ay nagpapanatili ng `/raw` folder kung saan nilalagay niya ang mga papel, tweet, screenshot, at tala. Ang graph3d ang sagot sa problemang iyon — **71.5x** na mas kaunting token bawat query kumpara sa pagbasa ng mga raw file, at persistent sa pagitan ng mga session.
 
 ```
-graphify-out/
+/graph3d .
+```
+
+```
+graph3d-out/
 ├── graph.html       interactive na graph — buksan sa kahit anong browser
 ├── GRAPH_REPORT.md  mga god node, nakakagulat na koneksyon, mga iminumungkahing tanong
 ├── graph.json       persistent na graph — maaaring i-query kahit pagkalipas ng mga linggo
@@ -33,7 +33,7 @@ graphify-out/
 
 ## Paano Gumagana
 
-Gumagana ang graphify sa tatlong pass. Una, isang deterministikong AST pass ang nag-e-extract ng istruktura mula sa mga code file nang walang LLM. Pagkatapos, ang mga video at audio file ay tina-transcribe nang lokal gamit ang faster-whisper. Panghuli, mga Claude sub-agent ang tumatakbo nang magkakasabay sa mga dokumento, papel, imahe, at transkripsyon. Ang mga resulta ay pinagsasama sa isang NetworkX graph, naka-cluster gamit ang Leiden, at ine-export bilang interactive na HTML, queryable na JSON, at audit report.
+Gumagana ang graph3d sa tatlong pass. Una, isang deterministikong AST pass ang nag-e-extract ng istruktura mula sa mga code file nang walang LLM. Pagkatapos, ang mga video at audio file ay tina-transcribe nang lokal gamit ang faster-whisper. Panghuli, mga Claude sub-agent ang tumatakbo nang magkakasabay sa mga dokumento, papel, imahe, at transkripsyon. Ang mga resulta ay pinagsasama sa isang NetworkX graph, naka-cluster gamit ang Leiden, at ine-export bilang interactive na HTML, queryable na JSON, at audit report.
 
 Ang bawat relasyon ay may label na `EXTRACTED`, `INFERRED` (may confidence score), o `AMBIGUOUS`.
 
@@ -42,24 +42,24 @@ Ang bawat relasyon ay may label na `EXTRACTED`, `INFERRED` (may confidence score
 **Mga Kinakailangan:** Python 3.10+ at isa sa mga sumusunod: [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex), [OpenCode](https://opencode.ai), [Cursor](https://cursor.com) at iba pa.
 
 ```bash
-uv tool install graphifyy && graphify install
+uv tool install graph3d && graph3d install
 # o gamit ang pipx
-pipx install graphifyy && graphify install
+pipx install graph3d && graph3d install
 # o pip
-pip install graphifyy && graphify install
+pip install graph3d && graph3d install
 ```
 
-> **Opisyal na package:** Ang PyPI package ay pinangalanang `graphifyy`. Ang tanging opisyal na repository ay [safishamsi/graphify](https://github.com/safishamsi/graphify).
+> **Opisyal na package:** Ang PyPI package ay pinangalanang `graph3d`. Ang tanging opisyal na repository ay [DarbotLM/graph3d](https://github.com/DarbotLM/graph3d).
 
 ## Paggamit
 
 ```
-/graphify .
-/graphify ./raw --update
-/graphify query "ano ang nagkokonekta sa Attention at sa optimizer?"
-/graphify path "DigestAuth" "Response"
-graphify hook install
-graphify update ./src
+/graph3d .
+/graph3d ./raw --update
+/graph3d query "ano ang nagkokonekta sa Attention at sa optimizer?"
+/graph3d path "DigestAuth" "Response"
+graph3d hook install
+graph3d update ./src
 ```
 
 ## Ano ang Makukuha Mo
@@ -70,8 +70,8 @@ graphify update ./src
 
 Ang mga code file ay prinoseso nang lokal sa pamamagitan ng tree-sitter AST. Ang mga video ay tina-transcribe nang lokal gamit ang faster-whisper. Walang telemetry.
 
-## Binuo sa ibabaw ng graphify — Penpax
+## Binuo sa ibabaw ng graph3d — Penpax
 
-Ang [**Penpax**](https://graphifylabs.ai) ay ang enterprise layer sa ibabaw ng graphify. **Malapit nang magkaroon ng libreng trial.** [Sumali sa waitlist →](https://graphifylabs.ai)
+Ang [**Penpax**](https://graph3dlabs.ai) ay ang enterprise layer sa ibabaw ng graph3d. **Malapit nang magkaroon ng libreng trial.** [Sumali sa waitlist →](https://graph3dlabs.ai)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=safishamsi/graphify&type=Date)](https://star-history.com/#safishamsi/graphify&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=DarbotLM/graph3d&type=Date)](https://star-history.com/#DarbotLM/graph3d&Date)

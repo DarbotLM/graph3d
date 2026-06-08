@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import networkx as nx
 
-from graphify.build import edge_data
+from graph3d.build import edge_data
 
 # Language families — extensions sharing a runtime can legitimately call each other
 _LANG_FAMILY: dict[str, str] = {
@@ -155,7 +155,7 @@ def _is_concept_node(G: nx.Graph, node_id: str) -> bool:
     return False
 
 
-from graphify.detect import CODE_EXTENSIONS, DOC_EXTENSIONS, PAPER_EXTENSIONS, IMAGE_EXTENSIONS
+from graph3d.detect import CODE_EXTENSIONS, DOC_EXTENSIONS, PAPER_EXTENSIONS, IMAGE_EXTENSIONS
 
 
 def _file_category(path: str) -> str:

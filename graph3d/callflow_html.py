@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-callflow_html.py — Generate call-flow architecture HTML from graphify knowledge graph outputs.
+callflow_html.py — Generate call-flow architecture HTML from graph3d knowledge graph outputs.
 
-Reads graph.json plus optional GRAPH_REPORT.md, .graphify_labels.json, and sections JSON,
+Reads graph.json plus optional GRAPH_REPORT.md, .graph3d_labels.json, and sections JSON,
 then produces a self-contained HTML file with:
   - Dark-themed CSS (fixed template)
   - Navigation bar from section list
@@ -12,9 +12,9 @@ then produces a self-contained HTML file with:
   - Auto-generated section intros and key-file cards
 
 Usage:
-  python3 -m graphify export callflow-html
-  python3 -m graphify export callflow-html /path/to/project/graphify-out/graph.json
-  python3 -m graphify export callflow-html --graph /path/to/graph.json --output docs/architecture.html
+  python3 -m graph3d export callflow-html
+  python3 -m graph3d export callflow-html /path/to/project/graph3d-out/graph.json
+  python3 -m graph3d export callflow-html --graph /path/to/graph.json --output docs/architecture.html
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ def endpoint_id(value) -> str:
 
 
 def normalize_node(raw: dict, index: int) -> dict:
-    """Normalize a graphify node across common graph.json schema variants."""
+    """Normalize a graph3d node across common graph.json schema variants."""
     node = dict(raw)
     node_id = first_present(
         node,
@@ -197,7 +197,7 @@ def normalize_node(raw: dict, index: int) -> dict:
 
 
 def normalize_edge(raw: dict, index: int) -> dict | None:
-    """Normalize graphify edges while preserving original fields."""
+    """Normalize graph3d edges while preserving original fields."""
     edge = dict(raw)
     source = endpoint_id(first_present(edge, "source", "src", "from", "from_id", "start", "u"))
     target = endpoint_id(first_present(edge, "target", "dst", "to", "to_id", "end", "v"))
@@ -218,7 +218,7 @@ def normalize_edge(raw: dict, index: int) -> dict | None:
 
 
 def _node_link_payload(data: dict) -> tuple[list, list] | None:
-    """Read current graphify graph.json via NetworkX's node-link parser."""
+    """Read current graph3d graph.json via NetworkX's node-link parser."""
     if not isinstance(data.get("nodes"), list):
         return None
     if not isinstance(data.get("links"), list) and not isinstance(data.get("edges"), list):
@@ -253,7 +253,7 @@ def _node_link_payload(data: dict) -> tuple[list, list] | None:
 def load_graph(path: str | Path) -> tuple:
     """Load graph.json. Returns normalized (nodes, edges, hyperedges, metadata)."""
     if path:
-        from graphify.security import check_graph_file_size_cap
+        from graph3d.security import check_graph_file_size_cap
         try:
             check_graph_file_size_cap(Path(path))
         except ValueError as exc:
@@ -294,7 +294,7 @@ def load_graph(path: str | Path) -> tuple:
 
 
 def load_labels(path: str | Path | None) -> dict:
-    """Load community labels from .graphify_labels.json, tolerating wrapper keys."""
+    """Load community labels from .graph3d_labels.json, tolerating wrapper keys."""
     data = read_json(path, default={})
     if not isinstance(data, dict):
         return {}
@@ -404,31 +404,31 @@ def infer_project_name(graph_path: str, meta: dict) -> str:
     if meta.get("project_name"):
         return meta["project_name"]
     path = Path(graph_path).resolve()
-    if path.parent.name == "graphify-out" and len(path.parents) > 1:
+    if path.parent.name == "graph3d-out" and len(path.parents) > 1:
         return path.parents[1].name
     return path.parent.name or "Project"
 
 
-def resolve_graphify_paths(args) -> dict:
-    """Resolve project root, graphify output dir, and optional files."""
+def resolve_graph3d_paths(args) -> dict:
+    """Resolve project root, graph3d output dir, and optional files."""
     base = Path(args.project).expanduser() if args.project else Path.cwd()
-    if args.graphify_out:
-        graphify_out = Path(args.graphify_out).expanduser()
+    if args.graph3d_out:
+        graph3d_out = Path(args.graph3d_out).expanduser()
     elif args.graph:
-        graphify_out = Path(args.graph).expanduser().parent
+        graph3d_out = Path(args.graph).expanduser().parent
     elif (base / "graph.json").exists():
-        graphify_out = base
+        graph3d_out = base
     else:
-        graphify_out = base / "graphify-out"
+        graph3d_out = base / "graph3d-out"
 
-    project_root = graphify_out.parent if graphify_out.name == "graphify-out" else base
-    graph = Path(args.graph).expanduser() if args.graph else graphify_out / "graph.json"
-    report = Path(args.report).expanduser() if args.report else graphify_out / "GRAPH_REPORT.md"
-    labels = Path(args.labels).expanduser() if args.labels else graphify_out / ".graphify_labels.json"
+    project_root = graph3d_out.parent if graph3d_out.name == "graph3d-out" else base
+    graph = Path(args.graph).expanduser() if args.graph else graph3d_out / "graph.json"
+    report = Path(args.report).expanduser() if args.report else graph3d_out / "GRAPH_REPORT.md"
+    labels = Path(args.labels).expanduser() if args.labels else graph3d_out / ".graph3d_labels.json"
     sections = Path(args.sections).expanduser() if args.sections else None
     return {
         "base": project_root,
-        "graphify_out": graphify_out,
+        "graph3d_out": graph3d_out,
         "graph": graph,
         "report": report,
         "labels": labels,
@@ -969,7 +969,7 @@ def node_degree_scores(edges: list) -> Counter:
 
 
 def node_importance(node: dict) -> float:
-    """Use graphify centrality fields when available."""
+    """Use graph3d centrality fields when available."""
     for key in ("pagerank", "page_rank", "pageRank", "rank", "centrality", "score"):
         if key in node:
             return to_float(node.get(key), 0.0)
@@ -1333,14 +1333,14 @@ def generate_header(sections: list, meta: dict, lang: str) -> str:
     if lang.startswith("zh"):
         title = f"{project_name} — 完整调用流程与架构文档"
         subtitle = (
-            f"由 graphify 知识图谱生成：{meta.get('node_count', '?')} 个节点、"
+            f"由 graph3d 知识图谱生成：{meta.get('node_count', '?')} 个节点、"
             f"{meta.get('edge_count', '?')} 条边、{meta.get('community_count', '?')} 个社区。"
             f"Commit: {commit}"
         )
     else:
         title = f"{project_name} — Complete Call Flow & Architecture Documentation"
         subtitle = (
-            f"Generated from graphify knowledge graph: {meta.get('node_count', '?')} nodes, "
+            f"Generated from graph3d knowledge graph: {meta.get('node_count', '?')} nodes, "
             f"{meta.get('edge_count', '?')} edges, {meta.get('community_count', '?')} communities. "
             f"Commit: {commit}"
         )
@@ -1481,8 +1481,8 @@ def generate_section_cards(sec: dict, nodes: list, section_edges: list, lang: st
         relation_text = pick_text(lang, "未检测到高置信调用边", "No high-confidence call edges detected")
     note = pick_text(
         lang,
-        f"本节由 graphify 社区聚类生成。关系概况：{relation_text}。图表优先展示高置信、跨节点调用或使用关系，完整节点清单位于表格中。",
-        f"This section comes from graphify community clustering. Relationship summary: {relation_text}. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.",
+        f"本节由 graph3d 社区聚类生成。关系概况：{relation_text}。图表优先展示高置信、跨节点调用或使用关系，完整节点清单位于表格中。",
+        f"This section comes from graph3d community clustering. Relationship summary: {relation_text}. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.",
     )
     key_files = pick_text(lang, "关键文件", "Key Files")
     role = pick_text(lang, "覆盖节点", "Coverage")
@@ -1513,7 +1513,7 @@ class CallflowOptions:
         self,
         project: str | Path | None = None,
         *,
-        graphify_out: str | Path | None = None,
+        graph3d_out: str | Path | None = None,
         graph: str | Path | None = None,
         report: str | Path | None = None,
         labels: str | Path | None = None,
@@ -1526,7 +1526,7 @@ class CallflowOptions:
         max_diagram_edges: int = 24,
     ):
         self.project = str(project) if project is not None else None
-        self.graphify_out = str(graphify_out) if graphify_out is not None else None
+        self.graph3d_out = str(graph3d_out) if graph3d_out is not None else None
         self.graph = str(graph) if graph is not None else None
         self.report = str(report) if report is not None else None
         self.labels = str(labels) if labels is not None else None
@@ -1577,7 +1577,7 @@ def _report_highlights(report_text: str, lang: str) -> str:
 def write_callflow_html(
     project: str | Path | None = None,
     *,
-    graphify_out: str | Path | None = None,
+    graph3d_out: str | Path | None = None,
     graph: str | Path | None = None,
     report: str | Path | None = None,
     labels: str | Path | None = None,
@@ -1590,10 +1590,10 @@ def write_callflow_html(
     max_diagram_edges: int = 24,
     verbose: bool = False,
 ) -> Path:
-    """Generate call-flow architecture HTML from graphify output files."""
+    """Generate call-flow architecture HTML from graph3d output files."""
     args = CallflowOptions(
         project,
-        graphify_out=graphify_out,
+        graph3d_out=graph3d_out,
         graph=graph,
         report=report,
         labels=labels,
@@ -1606,11 +1606,11 @@ def write_callflow_html(
         max_diagram_edges=max_diagram_edges,
     )
 
-    paths = resolve_graphify_paths(args)
+    paths = resolve_graph3d_paths(args)
     if not paths["graph"].exists():
         raise FileNotFoundError(
-            f"graphify output not found: {paths['graph']}. "
-            "Run graphify first or pass --graph /path/to/graph.json."
+            f"graph3d output not found: {paths['graph']}. "
+            "Run graph3d first or pass --graph /path/to/graph.json."
         )
 
     # Load data
@@ -1647,7 +1647,7 @@ def write_callflow_html(
         if not output_path.is_absolute():
             output_path = paths["base"] / output_path
     else:
-        output_path = paths["graphify_out"] / f"{safe_filename(meta['project_name'])}-callflow.html"
+        output_path = paths["graph3d_out"] / f"{safe_filename(meta['project_name'])}-callflow.html"
 
     if verbose:
         print(f"Loaded: {len(nodes)} nodes, {len(edges)} edges, {len(sections)} sections")
@@ -1797,7 +1797,7 @@ def write_callflow_html(
     # ── Footer ──
     html.append(f"""<div style="text-align:center; padding:40px 0; color: var(--muted); font-size:0.9rem;">
   <p>{escape(str(meta.get('project_name', 'Project')))} — Architecture Documentation</p>
-  <p>Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · graphify callflow-html</p>
+  <p>Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · graph3d callflow-html</p>
 </div>
 """)
 
@@ -1979,13 +1979,13 @@ def write_callflow_html(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate call-flow architecture HTML from graphify knowledge graph outputs"
+        description="Generate call-flow architecture HTML from graph3d knowledge graph outputs"
     )
-    parser.add_argument("project", nargs="?", default=None, help="Project root or graphify output directory")
-    parser.add_argument("--graphify-out", default=None, help="Path to graphify output directory")
+    parser.add_argument("project", nargs="?", default=None, help="Project root or graph3d output directory")
+    parser.add_argument("--graph3d-out", default=None, help="Path to graph3d output directory")
     parser.add_argument("--graph", default=None, help="Path to graph.json")
     parser.add_argument("--report", default=None, help="Path to GRAPH_REPORT.md")
-    parser.add_argument("--labels", default=None, help="Path to .graphify_labels.json")
+    parser.add_argument("--labels", default=None, help="Path to .graph3d_labels.json")
     parser.add_argument("--sections", default=None, help="Path to sections JSON file; auto-derived when omitted")
     parser.add_argument("--output", default=None, help="Output HTML path")
     parser.add_argument("--lang", default="auto", help="HTML language: auto, zh-CN, en, etc. (default: auto)")
@@ -1998,7 +1998,7 @@ def main():
     try:
         write_callflow_html(
             args.project,
-            graphify_out=args.graphify_out,
+            graph3d_out=args.graph3d_out,
             graph=args.graph,
             report=args.report,
             labels=args.labels,

@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+_GRAPH3D_OUT = os.environ.get("GRAPH3D_OUT", "graph3d-out")
 _PENDING_FILENAME = ".pending_changes"
 _PENDING_DRAIN_MAX_PASSES = 20
 
@@ -151,7 +151,7 @@ def _rebuild_lock(out_dir: Path, *, blocking: bool = False):
 def _apply_resource_limits() -> None:
     """Best-effort nice + memory cap. Called from inline hook scripts.
 
-    GRAPHIFY_REBUILD_MEMORY_LIMIT_MB caps RSS-ish memory. Uses RLIMIT_DATA on
+    GRAPH3D_REBUILD_MEMORY_LIMIT_MB caps RSS-ish memory. Uses RLIMIT_DATA on
     macOS (RLIMIT_AS is unreliable under Apple's libmalloc) and RLIMIT_AS on
     Linux. Silently skips if the platform doesn't support it.
     """
@@ -159,7 +159,7 @@ def _apply_resource_limits() -> None:
         os.nice(10)
     except (OSError, AttributeError):
         pass
-    mb = os.environ.get("GRAPHIFY_REBUILD_MEMORY_LIMIT_MB", "").strip()
+    mb = os.environ.get("GRAPH3D_REBUILD_MEMORY_LIMIT_MB", "").strip()
     if not mb:
         return
     try:
@@ -186,12 +186,12 @@ def _git_head() -> str | None:
         return None
 
 
-from graphify.detect import (
+from graph3d.detect import (
     CODE_EXTENSIONS,
     DOC_EXTENSIONS,
     PAPER_EXTENSIONS,
     IMAGE_EXTENSIONS,
-    _load_graphifyignore,
+    _load_graph3dignore,
     _is_ignored,
 )
 
@@ -231,7 +231,7 @@ def _node_community_map(graph_data: dict) -> dict[str, int]:
             out[str(node_id)] = int(cid)
         except (TypeError, ValueError):
             print(
-                f"[graphify watch] Skipping node with invalid community id: "
+                f"[graph3d watch] Skipping node with invalid community id: "
                 f"node_id={node_id!r} community={cid!r}",
                 file=sys.stderr,
             )
@@ -344,7 +344,7 @@ def _check_shrink(
         if tmp is not None:
             tmp.unlink(missing_ok=True)
         print(
-            f"[graphify] WARNING: new graph has {new_n} nodes but existing "
+            f"[graph3d] WARNING: new graph has {new_n} nodes but existing "
             f"graph.json has {existing_n}. Refusing to overwrite — you may be "
             f"missing chunk files from a previous session. "
             f"Pass --force to override.",
@@ -388,14 +388,14 @@ def _rebuild_code(
     the rebuild so concurrent post-commit hooks across multiple repos do not
     pile up. Returns False with a log line if the lock is held. Pass
     ``block_on_lock=True`` to wait instead of skip (used by the interactive
-    ``graphify update`` CLI).
+    ``graph3d update`` CLI).
 
     ``no_cluster`` skips community detection and writes raw merged extraction
-    JSON to graphify-out/graph.json (mirrors ``extract --no-cluster``).
+    JSON to graph3d-out/graph.json (mirrors ``extract --no-cluster``).
 
     Returns True on success, False on error or skipped-due-to-lock.
     """
-    out = watch_path / _GRAPHIFY_OUT
+    out = watch_path / _GRAPH3D_OUT
     if acquire_lock:
         # #1059: incremental (changed_paths is not None) hooks must not drop
         # their change set when another rebuild is already running. Queue
@@ -407,7 +407,7 @@ def _rebuild_code(
             _queue_pending(out, list(changed_paths))
         with _rebuild_lock(out, blocking=block_on_lock) as got:
             if not got:
-                print("[graphify watch] Rebuild already in progress for "
+                print("[graph3d watch] Rebuild already in progress for "
                       f"{watch_path.resolve()} - changes queued.")
                 return False
             # Lock acquired. Drain anything queued by earlier contenders
@@ -451,14 +451,14 @@ def _rebuild_code(
     project_root = Path.cwd().resolve() if not watch_path.is_absolute() else watch_root
     report_root = _report_root_label(watch_path)
     try:
-        from graphify.extract import extract, _get_extractor
-        from graphify.detect import detect
-        from graphify.build import build_from_json, _norm_source_file as _nsf
-        from graphify.cluster import cluster, remap_communities_to_previous, score_all
-        from graphify.analyze import god_nodes, surprising_connections, suggest_questions
-        from graphify.report import generate
-        from graphify.export import to_json, to_html
-        from graphify.security import check_graph_file_size_cap
+        from graph3d.extract import extract, _get_extractor
+        from graph3d.detect import detect
+        from graph3d.build import build_from_json, _norm_source_file as _nsf
+        from graph3d.cluster import cluster, remap_communities_to_previous, score_all
+        from graph3d.analyze import god_nodes, surprising_connections, suggest_questions
+        from graph3d.report import generate
+        from graph3d.export import to_json, to_html
+        from graph3d.security import check_graph_file_size_cap
 
         detected = detect(watch_path, follow_symlinks=follow_symlinks)
         code_files = [Path(f) for f in detected['files']['code']]
@@ -470,7 +470,7 @@ def _rebuild_code(
                 code_files.append(p)
 
         if not code_files:
-            print("[graphify watch] No code files found - nothing to rebuild.")
+            print("[graph3d watch] No code files found - nothing to rebuild.")
             return False
 
         # Incremental path: when the caller passed an explicit change list,
@@ -490,7 +490,7 @@ def _rebuild_code(
                     # preserved nodes that still claim this source path.
                     deleted_paths.add(_nsf(str(cand), str(project_root)) or str(cand))
             if not wanted and not deleted_paths:
-                print("[graphify watch] No tracked code files in change set - skipping rebuild.")
+                print("[graph3d watch] No tracked code files in change set - skipping rebuild.")
                 return True
             extract_targets = wanted
         else:
@@ -565,7 +565,7 @@ def _rebuild_code(
 
         _relativize_source_files(result, project_root)
         out.mkdir(exist_ok=True)
-        (out / ".graphify_root").write_text(str(watch_root), encoding="utf-8")
+        (out / ".graph3d_root").write_text(str(watch_root), encoding="utf-8")
 
         if no_cluster:
             # Normalise to "links" key so schema is consistent with the full clustered path.
@@ -594,7 +594,7 @@ def _rebuild_code(
                 existing_graph.write_text(candidate_graph_text, encoding="utf-8")
 
             try:
-                from graphify.detect import save_manifest
+                from graph3d.detect import save_manifest
                 save_manifest(detected["files"], kind="ast")
             except Exception:
                 pass
@@ -605,13 +605,13 @@ def _rebuild_code(
                 flag.unlink()
 
             if same_graph:
-                print("[graphify watch] No code-graph changes detected (--no-cluster); outputs left untouched.")
+                print("[graph3d watch] No code-graph changes detected (--no-cluster); outputs left untouched.")
             else:
                 print(
-                    "[graphify watch] Rebuilt (no clustering): "
+                    "[graph3d watch] Rebuilt (no clustering): "
                     f"{len(result.get('nodes', []))} nodes, {len(result.get('edges', []))} edges"
                 )
-                print(f"[graphify watch] graph.json updated in {out}")
+                print(f"[graph3d watch] graph.json updated in {out}")
             return True
 
         detection = {
@@ -632,14 +632,14 @@ def _rebuild_code(
                 same_topology = False
             if same_topology:
                 try:
-                    from graphify.detect import save_manifest
+                    from graph3d.detect import save_manifest
                     save_manifest(detected["files"], kind="ast")
                 except Exception:
                     pass
                 flag = out / "needs_update"
                 if flag.exists():
                     flag.unlink()
-                print("[graphify watch] No code-graph topology changes detected; outputs left untouched.")
+                print("[graph3d watch] No code-graph topology changes detected; outputs left untouched.")
                 return True
 
         communities = cluster(G)
@@ -649,7 +649,7 @@ def _rebuild_code(
         cohesion = score_all(G, communities)
         gods = god_nodes(G)
         surprises = surprising_connections(G, communities)
-        labels_file = out / ".graphify_labels.json"
+        labels_file = out / ".graph3d_labels.json"
         try:
             raw = json.loads(labels_file.read_text(encoding="utf-8")) if labels_file.exists() else {}
             labels = {int(k): v for k, v in raw.items() if int(k) in communities}
@@ -688,7 +688,7 @@ def _rebuild_code(
         no_change = same_graph and same_report
         if no_change:
             graph_tmp.unlink(missing_ok=True)
-            print("[graphify watch] No code-graph changes detected; graph.json/GRAPH_REPORT.md left untouched.")
+            print("[graph3d watch] No code-graph changes detected; graph.json/GRAPH_REPORT.md left untouched.")
         else:
             if not _check_shrink(
                 force, existing_graph_data, candidate_graph_data,
@@ -696,14 +696,14 @@ def _rebuild_code(
                 had_explicit_deletions=bool(deleted_paths),
             ):
                 return False
-            from graphify.export import backup_if_protected as _backup
+            from graph3d.export import backup_if_protected as _backup
             _backup(out)
             graph_tmp.replace(existing_graph)
             report_path.write_text(report, encoding="utf-8")
             labels_file.write_text(labels_json, encoding="utf-8")
 
         try:
-            from graphify.detect import save_manifest
+            from graph3d.detect import save_manifest
             save_manifest(detected["files"], kind="ast")
         except Exception:
             pass
@@ -716,7 +716,7 @@ def _rebuild_code(
                 to_html(G, communities, str(out / "graph.html"), community_labels=labels or None)
                 html_written = True
             except ValueError as viz_err:
-                print(f"[graphify watch] Skipped graph.html: {viz_err}")
+                print(f"[graph3d watch] Skipped graph.html: {viz_err}")
                 stale = out / "graph.html"
                 if stale.exists():
                     stale.unlink()
@@ -726,17 +726,17 @@ def _rebuild_code(
         callflow_files = list(out.glob("*-callflow.html"))
         if callflow_files and not no_change:
             try:
-                from graphify.callflow_html import write_callflow_html
+                from graph3d.callflow_html import write_callflow_html
                 for cf in callflow_files:
                     write_callflow_html(
                         graph=out / "graph.json",
                         report=out / "GRAPH_REPORT.md",
-                        labels=out / ".graphify_labels.json",
+                        labels=out / ".graph3d_labels.json",
                         output=cf,
                         verbose=False,
                     )
             except Exception as cf_err:
-                print(f"[graphify watch] callflow HTML update skipped: {cf_err}")
+                print(f"[graph3d watch] callflow HTML update skipped: {cf_err}")
 
         # clear stale needs_update flag if present
         flag = out / "needs_update"
@@ -744,16 +744,16 @@ def _rebuild_code(
             flag.unlink()
 
         if not no_change:
-            print(f"[graphify watch] Rebuilt: {G.number_of_nodes()} nodes, "
+            print(f"[graph3d watch] Rebuilt: {G.number_of_nodes()} nodes, "
                   f"{G.number_of_edges()} edges, {len(communities)} communities")
             products = "graph.json" + (", graph.html" if html_written else "") + " and GRAPH_REPORT.md"
             if callflow_files:
                 products += f", {len(callflow_files)} callflow HTML"
-            print(f"[graphify watch] {products} updated in {out}")
+            print(f"[graph3d watch] {products} updated in {out}")
         return True
 
     except Exception as exc:
-        print(f"[graphify watch] Rebuild failed: {exc}")
+        print(f"[graph3d watch] Rebuild failed: {exc}")
         return False
 
 
@@ -762,25 +762,25 @@ def check_update(watch_path: Path) -> bool:
 
     Cron-safe: always returns True so cron jobs do not alarm.
     Non-code file changes (docs, papers, images) require LLM-backed
-    re-extraction via `/graphify --update` — this function only signals
+    re-extraction via `/graph3d --update` — this function only signals
     that the update is needed.
     """
-    flag = Path(watch_path) / _GRAPHIFY_OUT / "needs_update"
+    flag = Path(watch_path) / _GRAPH3D_OUT / "needs_update"
     if flag.exists():
-        print(f"[graphify check-update] Pending non-code changes in {watch_path}.")
-        print("[graphify check-update] Run `/graphify --update` to apply semantic re-extraction.")
+        print(f"[graph3d check-update] Pending non-code changes in {watch_path}.")
+        print("[graph3d check-update] Run `/graph3d --update` to apply semantic re-extraction.")
     return True
 
 
 def _notify_only(watch_path: Path) -> None:
     """Write a flag file and print a notification (fallback for non-code-only corpora)."""
-    flag = watch_path / _GRAPHIFY_OUT / "needs_update"
+    flag = watch_path / _GRAPH3D_OUT / "needs_update"
     flag.parent.mkdir(parents=True, exist_ok=True)
     flag.write_text("1", encoding="utf-8")
-    print(f"\n[graphify watch] New or changed files detected in {watch_path}")
-    print("[graphify watch] Non-code files changed - semantic re-extraction requires LLM.")
-    print("[graphify watch] Run `/graphify --update` in Claude Code to update the graph.")
-    print(f"[graphify watch] Flag written to {flag}")
+    print(f"\n[graph3d watch] New or changed files detected in {watch_path}")
+    print("[graph3d watch] Non-code files changed - semantic re-extraction requires LLM.")
+    print("[graph3d watch] Run `/graph3d --update` in Claude Code to update the graph.")
+    print(f"[graph3d watch] Flag written to {flag}")
 
 
 def _has_non_code(changed_paths: list[Path]) -> bool:
@@ -793,7 +793,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
 
     For code-only changes: re-runs AST extraction + rebuild immediately (no LLM).
     For doc/paper/image changes: writes a needs_update flag and notifies the user
-    to run /graphify --update (LLM extraction required).
+    to run /graph3d --update (LLM extraction required).
 
     debounce: seconds to wait after the last change before triggering (avoids
     running on every keystroke when many files are saved at once).
@@ -809,14 +809,14 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
     pending: bool = False
     changed: set[Path] = set()
 
-    # Load .graphifyignore patterns ONCE at startup so the handler does not
+    # Load .graph3dignore patterns ONCE at startup so the handler does not
     # re-parse the file on every filesystem event. Watchdog's handler runs on
     # the observer thread and is invoked for every event the OS delivers
     # (Time Machine writes, Docker/Colima VM I/O, Spotlight indexing, …) —
     # without this short-circuit a busy volume can saturate a CPU core
     # discarding events one extension at a time. (gh-928)
     watch_root_for_ignore = watch_path.resolve()
-    ignore_patterns = _load_graphifyignore(watch_root_for_ignore)
+    ignore_patterns = _load_graph3dignore(watch_root_for_ignore)
 
     class Handler(FileSystemEventHandler):
         def on_any_event(self, event):
@@ -824,7 +824,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
             if event.is_directory:
                 return
             path = Path(event.src_path)
-            # Check .graphifyignore BEFORE the extension/dotfile/out filters so
+            # Check .graph3dignore BEFORE the extension/dotfile/out filters so
             # the cheapest short-circuit for users with broad ignore patterns
             # (node_modules/, .venv/, build/, …) fires first. _is_ignored
             # tolerates absolute paths outside watch_root via its internal
@@ -835,7 +835,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 return
             if any(part.startswith(".") for part in path.parts):
                 return
-            if _GRAPHIFY_OUT in path.parts:
+            if _GRAPH3D_OUT in path.parts:
                 return
             last_trigger = time.monotonic()
             pending = True
@@ -847,10 +847,10 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
     observer.schedule(handler, str(watch_path), recursive=True)
     observer.start()
 
-    print(f"[graphify watch] Watching {watch_path.resolve()} - press Ctrl+C to stop")
-    print(f"[graphify watch] Code changes rebuild graph automatically. "
-          f"Doc/image changes require /graphify --update.")
-    print(f"[graphify watch] Debounce: {debounce}s")
+    print(f"[graph3d watch] Watching {watch_path.resolve()} - press Ctrl+C to stop")
+    print(f"[graph3d watch] Code changes rebuild graph automatically. "
+          f"Doc/image changes require /graph3d --update.")
+    print(f"[graph3d watch] Debounce: {debounce}s")
 
     try:
         while True:
@@ -859,7 +859,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 pending = False
                 batch = list(changed)
                 changed.clear()
-                print(f"\n[graphify watch] {len(batch)} file(s) changed")
+                print(f"\n[graph3d watch] {len(batch)} file(s) changed")
                 has_non_code = _has_non_code(batch)
                 has_code = any(p.suffix.lower() in _CODE_EXTENSIONS for p in batch)
                 if has_code:
@@ -867,7 +867,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 if has_non_code:
                     _notify_only(watch_path)
     except KeyboardInterrupt:
-        print("\n[graphify watch] Stopped.")
+        print("\n[graph3d watch] Stopped.")
     finally:
         observer.stop()
         observer.join()
@@ -875,7 +875,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Watch a folder and auto-update the graphify graph")
+    parser = argparse.ArgumentParser(description="Watch a folder and auto-update the graph3d graph")
     parser.add_argument("path", nargs="?", default=".", help="Folder to watch (default: .)")
     parser.add_argument("--debounce", type=float, default=3.0,
                         help="Seconds to wait after last change before updating (default: 3)")

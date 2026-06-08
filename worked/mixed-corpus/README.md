@@ -1,6 +1,6 @@
 # Mixed Corpus Benchmark
 
-A small mixed-input corpus: Python source files, a markdown paper with arXiv citations, and one image. Tests graphify on different file types in a single run.
+A small mixed-input corpus: Python source files, a markdown paper with arXiv citations, and one image. Tests graph3d on different file types in a single run.
 
 ## Corpus (5 files)
 
@@ -17,18 +17,18 @@ Note: the original benchmark included `attention_arabic.png` (an Arabic-language
 ## How to run
 
 ```bash
-pip install graphifyy
+pip install graph3d
 
-graphify install                        # Claude Code
-graphify install --platform codex       # Codex
-graphify install --platform opencode    # OpenCode
-graphify install --platform claw        # OpenClaw
+graph3d install                        # Claude Code
+graph3d install --platform codex       # Codex
+graph3d install --platform opencode    # OpenCode
+graph3d install --platform claw        # OpenClaw
 ```
 
 Then open your AI coding assistant in this directory and type:
 
 ```
-/graphify ./raw
+/graph3d ./raw
 ```
 
 ## What to expect

@@ -3,10 +3,10 @@ import json
 import networkx as nx
 import pytest
 from pathlib import Path
-from graphify.build import build_from_json
-from graphify.cluster import cluster
-from graphify.analyze import god_nodes, surprising_connections, _is_concept_node, graph_diff, _surprise_score, _file_category, _is_json_key_node, find_import_cycles
-from graphify.extract import _make_id
+from graph3d.build import build_from_json
+from graph3d.cluster import cluster
+from graph3d.analyze import god_nodes, surprising_connections, _is_concept_node, graph_diff, _surprise_score, _file_category, _is_json_key_node, find_import_cycles
+from graph3d.extract import _make_id
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -607,7 +607,7 @@ def test_god_nodes_filter_is_case_insensitive():
 
 
 def _make_file_node(path: str) -> tuple[str, dict]:
-    """Create a graph node resembling real graphify schema."""
+    """Create a graph node resembling real graph3d schema."""
     nid = _make_id(path)
     return nid, {"label": Path(path).name, "source_file": path, "file_type": "code"}
 

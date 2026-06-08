@@ -53,7 +53,7 @@ def _safe_extract(extractor: Callable, path: Path) -> dict:
         print(f"  warning: skipped {path} (recursion limit exceeded)", file=sys.stderr, flush=True)
         return {"nodes": [], "edges": [], "error": "recursion_limit_exceeded"}
     except Exception as e:
-        if os.environ.get("GRAPHIFY_DEBUG"):
+        if os.environ.get("GRAPH3D_DEBUG"):
             import traceback
             traceback.print_exc(file=sys.stderr)
         print(f"  warning: skipped {path} ({type(e).__name__}: {e})", file=sys.stderr, flush=True)
@@ -7983,7 +7983,7 @@ def _pascal_project_root(from_path: Path) -> Path:
 
 
 def _pascal_resolve_unit(from_path: Path, unit_name: str) -> str:
-    """Resolve a Pascal unit name to the graphify node ID of its source file.
+    """Resolve a Pascal unit name to the graph3d node ID of its source file.
 
     Scans all Pascal files under the project root (the highest ancestor that
     directly contains .pas/.dpr files) and returns _make_id(str(matched_path)).
@@ -8872,7 +8872,7 @@ def _check_tree_sitter_version() -> None:
         import tree_sitter as _ts
         raise RuntimeError(
             f"tree-sitter {getattr(_ts, '__version__', 'unknown')} is too old. "
-            f"graphify requires tree-sitter >= 0.23.0 (Language API v2). "
+            f"graph3d requires tree-sitter >= 0.23.0 (Language API v2). "
             f"Run: pip install --upgrade tree-sitter"
         )
 
@@ -8902,7 +8902,7 @@ def extract_bash(path: Path) -> dict:
     function_bodies: list[tuple[str, Any]] = []
     defined_functions: set[str] = set()
 
-    from graphify.security import sanitize_metadata  # module-level cached import
+    from graph3d.security import sanitize_metadata  # module-level cached import
 
     def add_node(nid: str, label: str, line: int, kind: str = "code") -> None:
         if nid and nid not in seen_ids:
@@ -10200,12 +10200,12 @@ def _extract_parallel(
     import concurrent.futures
 
     if max_workers is None:
-        # Honour GRAPHIFY_MAX_WORKERS env override; otherwise scale to the
+        # Honour GRAPH3D_MAX_WORKERS env override; otherwise scale to the
         # full CPU. The historical `, 8)` cap was a safety bound for laptops
         # in 2023 — on a 32-thread workstation it costs a 4x slowdown
         # (issue #792). Capping at len(uncached_work) keeps small jobs
         # from spawning useless idle workers.
-        env_raw = os.environ.get("GRAPHIFY_MAX_WORKERS", "").strip()
+        env_raw = os.environ.get("GRAPH3D_MAX_WORKERS", "").strip()
         env_cap = None
         if env_raw:
             try:
@@ -10319,13 +10319,13 @@ def extract(
 
     Args:
         paths: files to extract from
-        cache_root: explicit root for graphify-out/cache/ (overrides the
+        cache_root: explicit root for graph3d-out/cache/ (overrides the
             inferred common path prefix). Pass Path('.') when running on a
-            subdirectory so the cache stays at ./graphify-out/cache/.
+            subdirectory so the cache stays at ./graph3d-out/cache/.
         parallel: if True and there are >= _PARALLEL_THRESHOLD uncached files,
             use ProcessPoolExecutor for multi-core extraction.
         max_workers: max subprocess count. Defaults to cpu_count (or the
-            value of GRAPHIFY_MAX_WORKERS if set), bounded by len(uncached_work).
+            value of GRAPH3D_MAX_WORKERS if set), bounded by len(uncached_work).
     """
     paths = [Path(p) for p in paths]
     _check_tree_sitter_version()
@@ -10619,9 +10619,9 @@ def collect_files(target: Path, *, follow_symlinks: bool = False, root: Path | N
     if target.is_file():
         return [target]
     _EXTENSIONS = set(_DISPATCH.keys())
-    from graphify.detect import _load_graphifyignore, _is_ignored, _is_noise_dir
+    from graph3d.detect import _load_graph3dignore, _is_ignored, _is_noise_dir
     ignore_root = root if root is not None else target
-    patterns = _load_graphifyignore(ignore_root)
+    patterns = _load_graph3dignore(ignore_root)
 
     def _ignored(p: Path) -> bool:
         return bool(patterns and _is_ignored(p, ignore_root, patterns))
@@ -10655,7 +10655,7 @@ def collect_files(target: Path, *, follow_symlinks: bool = False, root: Path | N
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python -m graphify.extract <file_or_dir> ...", file=sys.stderr)
+        print("Usage: python -m graph3d.extract <file_or_dir> ...", file=sys.stderr)
         sys.exit(1)
 
     paths: list[Path] = []

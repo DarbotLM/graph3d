@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 
-STORAGE_DIR = Path(".graphify_store")
+STORAGE_DIR = Path(".graph3d_store")
 INDEX_FILE = STORAGE_DIR / "index.json"
 
 

@@ -12,19 +12,19 @@ from datetime import date
 from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
-from graphify.security import sanitize_label
-from graphify.analyze import _node_community_map
-from graphify.build import edge_data
+from graph3d.security import sanitize_label
+from graph3d.analyze import _node_community_map
+from graph3d.build import edge_data
 
 
 # Artifacts worth preserving across rebuilds (non-regenerable without LLM or curation).
 _BACKUP_ARTIFACTS = [
     "graph.json",
     "GRAPH_REPORT.md",
-    ".graphify_labels.json",
-    ".graphify_analysis.json",
+    ".graph3d_labels.json",
+    ".graph3d_analysis.json",
     "manifest.json",
-    ".graphify_semantic_marker",
+    ".graph3d_semantic_marker",
     "cost.json",
 ]
 
@@ -33,23 +33,23 @@ def backup_if_protected(out_dir: Path) -> "Path | None":
     """Snapshot graph artifacts to a dated subfolder before an overwrite.
 
     Triggers when graph.json exists AND either:
-    - .graphify_semantic_marker is present (graph cost real LLM tokens), or
-    - .graphify_labels.json contains at least one non-default community label
+    - .graph3d_semantic_marker is present (graph cost real LLM tokens), or
+    - .graph3d_labels.json contains at least one non-default community label
       (graph has been curated by a human or skill).
 
     Returns the backup folder path, or None if no backup was taken.
     Never raises — backup failure prints a warning but never blocks the write.
-    Set GRAPHIFY_NO_BACKUP=1 to disable.
+    Set GRAPH3D_NO_BACKUP=1 to disable.
     """
-    if os.environ.get("GRAPHIFY_NO_BACKUP"):
+    if os.environ.get("GRAPH3D_NO_BACKUP"):
         return None
     out = Path(out_dir)
     if not (out / "graph.json").exists():
         return None
 
-    is_semantic = (out / ".graphify_semantic_marker").exists()
+    is_semantic = (out / ".graph3d_semantic_marker").exists()
     is_curated = False
-    labels_file = out / ".graphify_labels.json"
+    labels_file = out / ".graph3d_labels.json"
     if labels_file.exists():
         try:
             labels = json.loads(labels_file.read_text(encoding="utf-8"))
@@ -86,11 +86,11 @@ def backup_if_protected(out_dir: Path) -> "Path | None":
                 except Exception:
                     pass
         if copied:
-            print(f"[graphify] backed up {reason} graph ({copied} files) -> {backup_dir.name}/")
+            print(f"[graph3d] backed up {reason} graph ({copied} files) -> {backup_dir.name}/")
         return backup_dir
     except Exception as exc:
         import sys
-        print(f"[graphify] warning: backup failed ({exc}) - continuing with overwrite", file=sys.stderr)
+        print(f"[graph3d] warning: backup failed ({exc}) - continuing with overwrite", file=sys.stderr)
         return None
 
 def _obsidian_tag(name: str) -> str:
@@ -111,7 +111,7 @@ def _strip_diacritics(text: str) -> str:
 def _yaml_str(s: str) -> str:
     """Escape a value for safe embedding in a YAML double-quoted scalar (F-009).
 
-    See `graphify.ingest._yaml_str` for the full rationale; duplicated here to
+    See `graph3d.ingest._yaml_str` for the full rationale; duplicated here to
     avoid pulling the URL-fetching `ingest` module into export's dependency
     graph. Handles backslash, double-quote, all line breaks (\\n, \\r,
     U+2028, U+2029), tab, NUL, and other C0/DEL control characters that
@@ -155,13 +155,13 @@ MAX_NODES_FOR_VIZ = 5_000
 
 
 def _viz_node_limit() -> int:
-    """Return the effective viz node limit, honoring GRAPHIFY_VIZ_NODE_LIMIT env var.
+    """Return the effective viz node limit, honoring GRAPH3D_VIZ_NODE_LIMIT env var.
 
     Falls back to MAX_NODES_FOR_VIZ when the env var is unset, empty, or non-integer.
     Set to 0 to disable HTML viz unconditionally (useful for CI runners).
     """
     import os
-    raw = os.environ.get("GRAPHIFY_VIZ_NODE_LIMIT")
+    raw = os.environ.get("GRAPH3D_VIZ_NODE_LIMIT")
     if raw is None or not raw.strip():
         return MAX_NODES_FOR_VIZ
     try:
@@ -484,7 +484,7 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
     existing_path = Path(output_path)
     if not force and existing_path.exists():
         try:
-            from graphify.security import check_graph_file_size_cap
+            from graph3d.security import check_graph_file_size_cap
             check_graph_file_size_cap(existing_path)
             existing_data = json.loads(existing_path.read_text(encoding="utf-8"))
             existing_n = len(existing_data.get("nodes", []))
@@ -492,7 +492,7 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
             if new_n < existing_n:
                 import sys as _sys
                 print(
-                    f"[graphify] WARNING: new graph has {new_n} nodes but existing "
+                    f"[graph3d] WARNING: new graph has {new_n} nodes but existing "
                     f"graph.json has {existing_n}. Refusing to overwrite — you may be "
                     f"missing chunk files from a previous session. "
                     f"Pass force=True to override.",
@@ -593,7 +593,7 @@ def _cypher_label(raw: str, fallback: str) -> str:
 
 
 def to_cypher(G: nx.Graph, output_path: str) -> None:
-    lines = ["// Neo4j Cypher import - generated by /graphify", ""]
+    lines = ["// Neo4j Cypher import - generated by /graph3d", ""]
     for node_id, data in G.nodes(data=True):
         label = _cypher_escape(data.get("label", node_id))
         node_id_esc = _cypher_escape(node_id)
@@ -694,7 +694,7 @@ def to_html(
             return
         raise ValueError(
             f"Graph has {G.number_of_nodes()} nodes - too large for HTML viz "
-            f"(limit: {limit}). Use --no-viz, raise GRAPHIFY_VIZ_NODE_LIMIT, "
+            f"(limit: {limit}). Use --no-viz, raise GRAPH3D_VIZ_NODE_LIMIT, "
             f"or reduce input size."
         )
 
@@ -776,7 +776,7 @@ def to_html(
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>graphify - {title}</title>
+<title>graph3d - {title}</title>
 <script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"
         integrity="sha384-Ux6phic9PEHJ38YtrijhkzyJ8yQlH8i/+buBR8s3mAZOJrP1gwyvAcIYl3GWtpX1"
         crossorigin="anonymous"></script>
@@ -879,12 +879,12 @@ def to_obsidian(
             return "EXTRACTED"
         return Counter(confs).most_common(1)[0][0]
 
-    # Map file_type → graphify tag
+    # Map file_type → graph3d tag
     _FTYPE_TAG = {
-        "code": "graphify/code",
-        "document": "graphify/document",
-        "paper": "graphify/paper",
-        "image": "graphify/image",
+        "code": "graph3d/code",
+        "document": "graph3d/document",
+        "paper": "graph3d/paper",
+        "image": "graph3d/image",
     }
 
     # Write one .md file per node
@@ -899,9 +899,9 @@ def to_obsidian(
 
         # Build tags for this node
         ftype = data.get("file_type", "")
-        ftype_tag = _FTYPE_TAG.get(ftype, f"graphify/{ftype}" if ftype else "graphify/document")
+        ftype_tag = _FTYPE_TAG.get(ftype, f"graph3d/{ftype}" if ftype else "graph3d/document")
         dom_conf = _dominant_confidence(node_id)
-        conf_tag = f"graphify/{dom_conf}"
+        conf_tag = f"graph3d/{dom_conf}"
         comm_tag = f"community/{_obsidian_tag(community_name)}"
         node_tags = [ftype_tag, conf_tag, comm_tag]
 

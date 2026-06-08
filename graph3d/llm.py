@@ -1,7 +1,7 @@
 # Direct LLM backend for semantic extraction — supports Claude, Kimi K2.6,
 # Gemini, and OpenAI.
-# Used by `graphify extract . --backend gemini` and the benchmark scripts.
-# The default graphify pipeline uses Claude Code subagents via skill.md;
+# Used by `graph3d extract . --backend gemini` and the benchmark scripts.
+# The default graph3d pipeline uses Claude Code subagents via skill.md;
 # this module provides a direct API path for non-Claude-Code environments.
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ BACKENDS: dict[str, dict] = {
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "default_model": "gemini-3-flash-preview",
         "env_keys": ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
-        "model_env_key": "GRAPHIFY_GEMINI_MODEL",
+        "model_env_key": "GRAPH3D_GEMINI_MODEL",
         "pricing": {"input": 0.50, "output": 3.00},  # USD per 1M tokens
         "temperature": 0,
         "reasoning_effort": "low",
@@ -83,7 +83,7 @@ BACKENDS: dict[str, dict] = {
         "base_url": "https://api.openai.com/v1",
         "default_model": "gpt-4.1-mini",
         "env_key": "OPENAI_API_KEY",
-        "model_env_key": "GRAPHIFY_OPENAI_MODEL",
+        "model_env_key": "GRAPH3D_OPENAI_MODEL",
         "pricing": {"input": 0.40, "output": 1.60},  # USD per 1M tokens
         "temperature": 0,
     },
@@ -91,7 +91,7 @@ BACKENDS: dict[str, dict] = {
         "base_url": "https://api.deepseek.com",
         "default_model": "deepseek-v4-flash",
         "env_key": "DEEPSEEK_API_KEY",
-        "model_env_key": "GRAPHIFY_DEEPSEEK_MODEL",
+        "model_env_key": "GRAPH3D_DEEPSEEK_MODEL",
         "pricing": {"input": 0.14, "output": 0.28},  # USD per 1M tokens (v4-flash)
         # deepseek-reasoner / thinking-mode models silently ignore temperature;
         # deepseek-chat / v4-flash (non-thinking) accept 0-2. Safe to send 0.
@@ -100,7 +100,7 @@ BACKENDS: dict[str, dict] = {
     },
     "bedrock": {
         "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "model_env_key": "GRAPHIFY_BEDROCK_MODEL",
+        "model_env_key": "GRAPH3D_BEDROCK_MODEL",
         "pricing": {"input": 3.0, "output": 15.0},  # USD per 1M tokens
         "temperature": 0,
         "max_tokens": 16384,
@@ -120,8 +120,8 @@ BACKENDS: dict[str, dict] = {
 
 def _custom_providers_path(global_: bool = True) -> Path:
     if global_:
-        return Path.home() / ".graphify" / "providers.json"
-    return Path(".graphify") / "providers.json"
+        return Path.home() / ".graph3d" / "providers.json"
+    return Path(".graph3d") / "providers.json"
 
 
 def _load_custom_providers() -> dict[str, dict]:
@@ -145,8 +145,8 @@ BACKENDS.update(_load_custom_providers())
 
 
 def _resolve_max_tokens(default: int) -> int:
-    """Honour GRAPHIFY_MAX_OUTPUT_TOKENS env var override, else use backend default."""
-    raw = os.environ.get("GRAPHIFY_MAX_OUTPUT_TOKENS", "").strip()
+    """Honour GRAPH3D_MAX_OUTPUT_TOKENS env var override, else use backend default."""
+    raw = os.environ.get("GRAPH3D_MAX_OUTPUT_TOKENS", "").strip()
     if raw:
         try:
             v = int(raw)
@@ -157,7 +157,7 @@ def _resolve_max_tokens(default: int) -> int:
     return default
 
 _EXTRACTION_SYSTEM = """\
-You are a graphify semantic extraction agent. Extract a knowledge graph fragment from the files provided.
+You are a graph3d semantic extraction agent. Extract a knowledge graph fragment from the files provided.
 Output ONLY valid JSON — no explanation, no markdown fences, no preamble.
 
 Rules:
@@ -215,7 +215,7 @@ def _parse_llm_json(raw: str) -> dict:
     """
     if len(raw) > _LLM_JSON_MAX_BYTES:
         print(
-            f"[graphify] LLM response exceeds {_LLM_JSON_MAX_BYTES} bytes "
+            f"[graph3d] LLM response exceeds {_LLM_JSON_MAX_BYTES} bytes "
             f"({len(raw)} bytes); refusing to parse and dropping chunk.",
             file=sys.stderr,
         )
@@ -272,7 +272,7 @@ def _parse_llm_json(raw: str) -> dict:
                     except json.JSONDecodeError:
                         break
     print(
-        f"[graphify] LLM returned invalid JSON, skipping chunk "
+        f"[graph3d] LLM returned invalid JSON, skipping chunk "
         f"(first 200 chars: {raw[:200]!r})",
         file=sys.stderr,
     )
@@ -353,7 +353,7 @@ def _call_openai_compat(
     try:
         from openai import OpenAI
     except ImportError as exc:
-        pkg_hint = "graphifyy[kimi]" if backend == "kimi" else "openai"
+        pkg_hint = "graph3d[kimi]" if backend == "kimi" else "openai"
         raise ImportError(
             "Gemini/Kimi/Ollama/OpenAI-compatible extraction requires the openai package. "
             f"Run: pip install {pkg_hint}"
@@ -361,10 +361,10 @@ def _call_openai_compat(
 
     # Local backends (ollama, llama.cpp, vLLM) routinely take >60s for a
     # single chunk on a large model — far longer than the openai SDK's
-    # default. Honour GRAPHIFY_API_TIMEOUT (seconds) for explicit override;
+    # default. Honour GRAPH3D_API_TIMEOUT (seconds) for explicit override;
     # default to 600s, which is long enough for a 31B model on a 16k chunk
     # but still bounds runaway connections (issue #792 addendum).
-    timeout_raw = os.environ.get("GRAPHIFY_API_TIMEOUT", "").strip()
+    timeout_raw = os.environ.get("GRAPH3D_API_TIMEOUT", "").strip()
     timeout_s: float = 600.0
     if timeout_raw:
         try:
@@ -398,7 +398,7 @@ def _call_openai_compat(
     # Formula: actual input tokens + output cap + system prompt headroom.
     # Capped at 131072 (enough for the default 60k token_budget); env var wins.
     if backend == "ollama":
-        num_ctx_raw = os.environ.get("GRAPHIFY_OLLAMA_NUM_CTX", "").strip()
+        num_ctx_raw = os.environ.get("GRAPH3D_OLLAMA_NUM_CTX", "").strip()
         # Auto-derive num_ctx from actual chunk size regardless — used as the
         # fallback and for the mismatch check below.
         estimated_input = len(user_message) // _CHARS_PER_TOKEN + 400
@@ -411,7 +411,7 @@ def _call_openai_compat(
                 # Bad env var: fall through to auto-derivation (not 131072 —
                 # hardcoding the cap is what causes OOM on constrained VRAM).
                 print(
-                    f"[graphify] GRAPHIFY_OLLAMA_NUM_CTX={num_ctx_raw!r} is not a valid integer; "
+                    f"[graph3d] GRAPH3D_OLLAMA_NUM_CTX={num_ctx_raw!r} is not a valid integer; "
                     f"using auto-derived value ({auto_num_ctx}).",
                     file=sys.stderr,
                 )
@@ -421,7 +421,7 @@ def _call_openai_compat(
                 # Ollama silently truncates the prompt and returns empty responses.
                 if num_ctx < estimated_input:
                     print(
-                        f"[graphify] warning: GRAPHIFY_OLLAMA_NUM_CTX={num_ctx} is smaller than "
+                        f"[graph3d] warning: GRAPH3D_OLLAMA_NUM_CTX={num_ctx} is smaller than "
                         f"the estimated chunk input (~{estimated_input} tokens). Ollama will "
                         f"silently truncate the prompt and return empty responses. "
                         f"Try --token-budget {max(1024, num_ctx // 3)} or increase NUM_CTX.",
@@ -431,7 +431,7 @@ def _call_openai_compat(
             # Estimate input tokens: user_message chars / 4 (standard BPE
             # heuristic) + 400 for the system prompt, then add output headroom.
             num_ctx = auto_num_ctx
-        keep_alive = os.environ.get("GRAPHIFY_OLLAMA_KEEP_ALIVE", "30m")
+        keep_alive = os.environ.get("GRAPH3D_OLLAMA_KEEP_ALIVE", "30m")
         kwargs["extra_body"] = {"options": {"num_ctx": num_ctx}, "keep_alive": keep_alive}
     resp = client.chat.completions.create(**kwargs)
     if not resp.choices or resp.choices[0].message is None:
@@ -452,7 +452,7 @@ def _call_openai_compat(
     # layer bisects the chunk — same recovery as a true truncation.
     if _response_is_hollow(raw_content, result) and result["finish_reason"] != "length":
         print(
-            f"[graphify] {backend or 'backend'} returned a hollow response "
+            f"[graph3d] {backend or 'backend'} returned a hollow response "
             f"(content={'empty' if not (raw_content or '').strip() else 'no nodes/edges'}, "
             f"output_tokens={result['output_tokens']}); "
             "treating as truncation so adaptive retry can bisect the chunk.",
@@ -462,10 +462,10 @@ def _call_openai_compat(
     output_tokens = result["output_tokens"]
     if output_tokens < 50 and backend == "ollama":
         print(
-            "[graphify] warning: ollama returned very few tokens — likely causes: "
+            "[graph3d] warning: ollama returned very few tokens — likely causes: "
             "(1) VRAM pressure: check `nvidia-smi` and reduce chunk size with "
             "--token-budget (e.g. --token-budget 4096) or set "
-            "GRAPHIFY_OLLAMA_NUM_CTX to a smaller value; "
+            "GRAPH3D_OLLAMA_NUM_CTX to a smaller value; "
             "(2) model too small for JSON instruction following — "
             "try a larger model with --model (e.g. --model qwen2.5-coder:14b).",
             file=sys.stderr,
@@ -501,7 +501,7 @@ def _call_claude(api_key: str, model: str, user_message: str, max_tokens: int = 
     result["finish_reason"] = "length" if resp.stop_reason == "max_tokens" else "stop"
     if _response_is_hollow(raw_content, result) and result["finish_reason"] != "length":
         print(
-            "[graphify] claude returned a hollow response; treating as "
+            "[graph3d] claude returned a hollow response; treating as "
             "truncation so adaptive retry can bisect the chunk.",
             file=sys.stderr,
         )
@@ -514,7 +514,7 @@ def _call_claude_cli(user_message: str, max_tokens: int = 8192, *, deep_mode: bo
 
     Routes through the user's Claude Code subscription auth instead of a separate
     ANTHROPIC_API_KEY. Useful for Pro/Max subscribers who don't want to provision
-    a pay-as-you-go API key just to run graphify's semantic pass.
+    a pay-as-you-go API key just to run graph3d's semantic pass.
     """
     import platform
     import shutil
@@ -557,11 +557,11 @@ def _call_claude_cli(user_message: str, max_tokens: int = 8192, *, deep_mode: bo
         "--system-prompt", _extraction_system(deep=deep_mode),
     ]
     # claude-cli defaults to Opus, which is overkill for the structured-JSON
-    # extraction graphify performs. GRAPHIFY_CLAUDE_CLI_MODEL=haiku (or
+    # extraction graph3d performs. GRAPH3D_CLAUDE_CLI_MODEL=haiku (or
     # sonnet, or a full model ID like claude-haiku-4-5-20251001) lets users
     # opt into a cheaper / faster model. Default behaviour unchanged when
     # the env var is unset.
-    cli_model = os.environ.get("GRAPHIFY_CLAUDE_CLI_MODEL", "").strip()
+    cli_model = os.environ.get("GRAPH3D_CLAUDE_CLI_MODEL", "").strip()
     if cli_model:
         cli_args.extend(["--model", cli_model])
     proc = subprocess.run(
@@ -601,7 +601,7 @@ def _call_claude_cli(user_message: str, max_tokens: int = 8192, *, deep_mode: bo
     result["finish_reason"] = "length" if stop_reason == "max_tokens" else "stop"
     if _response_is_hollow(raw_content, result) and result["finish_reason"] != "length":
         print(
-            "[graphify] claude-cli returned a hollow response; treating as "
+            "[graph3d] claude-cli returned a hollow response; treating as "
             "truncation so adaptive retry can bisect the chunk.",
             file=sys.stderr,
         )
@@ -616,7 +616,7 @@ def _call_bedrock(model: str, user_message: str, max_tokens: int = 8192, *, deep
         import botocore.exceptions
     except ImportError as exc:
         raise ImportError(
-            "AWS Bedrock extraction requires boto3. Run: pip install graphifyy[bedrock]"
+            "AWS Bedrock extraction requires boto3. Run: pip install graph3d[bedrock]"
         ) from exc
 
     region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
@@ -645,7 +645,7 @@ def _call_bedrock(model: str, user_message: str, max_tokens: int = 8192, *, deep
     result["finish_reason"] = "length" if resp.get("stopReason") == "max_tokens" else "stop"
     if _response_is_hollow(text, result) and result["finish_reason"] != "length":
         print(
-            "[graphify] bedrock returned a hollow response; treating as "
+            "[graph3d] bedrock returned a hollow response; treating as "
             "truncation so adaptive retry can bisect the chunk.",
             file=sys.stderr,
         )
@@ -688,7 +688,7 @@ def extract_files_direct(
         ollama_url = os.environ.get("OLLAMA_BASE_URL", cfg.get("base_url", ""))
         _validate_ollama_base_url(ollama_url)
         print(
-            "[graphify] WARNING: ollama backend selected with no OLLAMA_API_KEY set; "
+            "[graph3d] WARNING: ollama backend selected with no OLLAMA_API_KEY set; "
             f"sending corpus to {ollama_url}. Set OLLAMA_API_KEY (any non-empty value) "
             "to suppress this warning.",
             file=sys.stderr,
@@ -866,20 +866,20 @@ def _extract_with_adaptive_retry(
             raise
         if len(chunk) <= 1:
             print(
-                f"[graphify] single-file chunk {chunk[0]} exceeds model context "
+                f"[graph3d] single-file chunk {chunk[0]} exceeds model context "
                 f"and cannot be split further: {exc}",
                 file=sys.stderr,
             )
             return {"nodes": [], "edges": [], "hyperedges": [], "input_tokens": 0, "output_tokens": 0, "model": model, "finish_reason": "stop"}
         if _depth >= max_depth:
             print(
-                f"[graphify] chunk of {len(chunk)} still overflows context at "
+                f"[graph3d] chunk of {len(chunk)} still overflows context at "
                 f"recursion depth {_depth} (max {max_depth}) — dropping",
                 file=sys.stderr,
             )
             return {"nodes": [], "edges": [], "hyperedges": [], "input_tokens": 0, "output_tokens": 0, "model": model, "finish_reason": "stop"}
         print(
-            f"[graphify] chunk of {len(chunk)} exceeded context at depth "
+            f"[graph3d] chunk of {len(chunk)} exceeded context at depth "
             f"{_depth} ({type(exc).__name__}); splitting in half and retrying",
             file=sys.stderr,
         )
@@ -905,7 +905,7 @@ def _extract_with_adaptive_retry(
 
     if len(chunk) <= 1:
         print(
-            f"[graphify] single-file chunk {chunk[0]} truncated at "
+            f"[graph3d] single-file chunk {chunk[0]} truncated at "
             f"max_completion_tokens — partial result kept",
             file=sys.stderr,
         )
@@ -913,14 +913,14 @@ def _extract_with_adaptive_retry(
 
     if _depth >= max_depth:
         print(
-            f"[graphify] chunk of {len(chunk)} still truncated at recursion "
+            f"[graph3d] chunk of {len(chunk)} still truncated at recursion "
             f"depth {_depth} (max {max_depth}) — partial result kept",
             file=sys.stderr,
         )
         return result
 
     print(
-        f"[graphify] chunk of {len(chunk)} truncated at depth {_depth}, "
+        f"[graph3d] chunk of {len(chunk)} truncated at depth {_depth}, "
         f"splitting into halves of {len(chunk) // 2} and "
         f"{len(chunk) - len(chunk) // 2}",
         file=sys.stderr,
@@ -1026,11 +1026,11 @@ def extract_corpus_parallel(
     # Ollama serves one request at a time per loaded model on a single GPU.
     # Four concurrent 60k-token requests cause VRAM pressure and hollow
     # responses after 3-4 chunks (#798). Force serial unless the user opts in.
-    if backend == "ollama" and os.environ.get("GRAPHIFY_OLLAMA_PARALLEL", "").strip() != "1":
+    if backend == "ollama" and os.environ.get("GRAPH3D_OLLAMA_PARALLEL", "").strip() != "1":
         max_concurrency = 1
     # claude-cli shells out to a Claude Code session; parallel subprocesses conflict
     # over session state. Force serial unless the user explicitly opts in.
-    if backend == "claude-cli" and os.environ.get("GRAPHIFY_CLAUDE_CLI_PARALLEL", "").strip() != "1":
+    if backend == "claude-cli" and os.environ.get("GRAPH3D_CLAUDE_CLI_PARALLEL", "").strip() != "1":
         max_concurrency = 1
     workers = max(1, min(max_concurrency, total))
     if workers == 1:
@@ -1039,7 +1039,7 @@ def extract_corpus_parallel(
         for idx, chunk in enumerate(chunks):
             _, result, exc = _run_one(idx, chunk)
             if exc is not None:
-                print(f"[graphify] chunk {idx + 1}/{total} failed: {exc}", file=sys.stderr)
+                print(f"[graph3d] chunk {idx + 1}/{total} failed: {exc}", file=sys.stderr)
                 merged["failed_chunks"] += 1
                 continue
             assert result is not None
@@ -1053,7 +1053,7 @@ def extract_corpus_parallel(
                 idx, result, exc = future.result()
                 if exc is not None:
                     print(
-                        f"[graphify] chunk {idx + 1}/{total} failed: {exc}",
+                        f"[graph3d] chunk {idx + 1}/{total} failed: {exc}",
                         file=sys.stderr,
                     )
                     merged["failed_chunks"] += 1
@@ -1068,7 +1068,7 @@ def extract_corpus_parallel(
     # summary block makes the problem visible.
     if merged["failed_chunks"] > 0:
         print(
-            f"[graphify] WARNING: {merged['failed_chunks']}/{total} semantic chunk(s) failed"
+            f"[graph3d] WARNING: {merged['failed_chunks']}/{total} semantic chunk(s) failed"
             " — see errors above. Partial results returned.",
             file=sys.stderr,
         )
@@ -1087,12 +1087,12 @@ def _merge_into(merged: dict, result: dict) -> None:
 def _call_llm(prompt: str, *, backend: str, max_tokens: int = 200) -> str:
     """Send a plain-text prompt to `backend` and return the model's text reply.
 
-    Used by lightweight callers (e.g. `graphify.dedup` LLM tiebreaker) that
+    Used by lightweight callers (e.g. `graph3d.dedup` LLM tiebreaker) that
     don't need the full extraction prompt or JSON-shaped output. Mirrors the
     backend dispatch logic of `extract_files_direct` but skips the
     `_EXTRACTION_SYSTEM` prompt and JSON parsing.
 
-    Previously `graphify.dedup` imported a `_call_llm` symbol that did not
+    Previously `graph3d.dedup` imported a `_call_llm` symbol that did not
     exist in this module, so the LLM tiebreaker silently no-op'd on
     `ImportError` (F-038). Adding the function here re-enables it.
     """
@@ -1204,13 +1204,13 @@ def _validate_ollama_base_url(url: str) -> None:
         parsed = urlparse(url)
     except Exception:
         print(
-            f"[graphify] WARNING: OLLAMA_BASE_URL={url!r} is not a parseable URL.",
+            f"[graph3d] WARNING: OLLAMA_BASE_URL={url!r} is not a parseable URL.",
             file=sys.stderr,
         )
         return
     if parsed.scheme not in ("http", "https"):
         print(
-            f"[graphify] WARNING: OLLAMA_BASE_URL has unexpected scheme {parsed.scheme!r}; "
+            f"[graph3d] WARNING: OLLAMA_BASE_URL has unexpected scheme {parsed.scheme!r}; "
             "expected http or https.",
             file=sys.stderr,
         )
@@ -1220,7 +1220,7 @@ def _validate_ollama_base_url(url: str) -> None:
     if not is_loopback:
         scheme_note = " (UNENCRYPTED)" if parsed.scheme == "http" else ""
         print(
-            f"[graphify] WARNING: OLLAMA_BASE_URL points to non-loopback host {host!r}{scheme_note}. "
+            f"[graph3d] WARNING: OLLAMA_BASE_URL points to non-loopback host {host!r}{scheme_note}. "
             "Your full corpus will be sent to that endpoint. "
             "Set OLLAMA_BASE_URL=http://localhost:11434/v1 to keep extraction local.",
             file=sys.stderr,

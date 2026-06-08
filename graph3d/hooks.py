@@ -1,42 +1,42 @@
-# git hook integration - install/uninstall graphify post-commit and post-checkout hooks
+# git hook integration - install/uninstall graph3d post-commit and post-checkout hooks
 from __future__ import annotations
 import configparser
 import re
 import sys
 from pathlib import Path
 
-_HOOK_MARKER = "# graphify-hook-start"
-_HOOK_MARKER_END = "# graphify-hook-end"
-_CHECKOUT_MARKER = "# graphify-checkout-hook-start"
-_CHECKOUT_MARKER_END = "# graphify-checkout-hook-end"
+_HOOK_MARKER = "# graph3d-hook-start"
+_HOOK_MARKER_END = "# graph3d-hook-end"
+_CHECKOUT_MARKER = "# graph3d-checkout-hook-start"
+_CHECKOUT_MARKER_END = "# graph3d-checkout-hook-end"
 
 _PYTHON_DETECT = """\
 # Detect the correct Python interpreter (handles pipx, venv, system installs)
-GRAPHIFY_BIN=$(command -v graphify 2>/dev/null)
-if [ -n "$GRAPHIFY_BIN" ]; then
-    case "$GRAPHIFY_BIN" in
+GRAPH3D_BIN=$(command -v graph3d 2>/dev/null)
+if [ -n "$GRAPH3D_BIN" ]; then
+    case "$GRAPH3D_BIN" in
         *.exe) _SHEBANG="" ;;
-        *)     _SHEBANG=$(head -1 "$GRAPHIFY_BIN" | sed 's/^#![[:space:]]*//') ;;
+        *)     _SHEBANG=$(head -1 "$GRAPH3D_BIN" | sed 's/^#![[:space:]]*//') ;;
     esac
     case "$_SHEBANG" in
-        */env\\ *) GRAPHIFY_PYTHON="${_SHEBANG#*/env }" ;;
-        *)         GRAPHIFY_PYTHON="$_SHEBANG" ;;
+        */env\\ *) GRAPH3D_PYTHON="${_SHEBANG#*/env }" ;;
+        *)         GRAPH3D_PYTHON="$_SHEBANG" ;;
     esac
     # Allowlist: only keep characters valid in a filesystem path to prevent
     # injection if the shebang contains shell metacharacters
-    case "$GRAPHIFY_PYTHON" in
-        *[!a-zA-Z0-9/_.@-]*) GRAPHIFY_PYTHON="" ;;
+    case "$GRAPH3D_PYTHON" in
+        *[!a-zA-Z0-9/_.@-]*) GRAPH3D_PYTHON="" ;;
     esac
-    if [ -n "$GRAPHIFY_PYTHON" ] && ! "$GRAPHIFY_PYTHON" -c "import graphify" 2>/dev/null; then
-        GRAPHIFY_PYTHON=""
+    if [ -n "$GRAPH3D_PYTHON" ] && ! "$GRAPH3D_PYTHON" -c "import graph3d" 2>/dev/null; then
+        GRAPH3D_PYTHON=""
     fi
 fi
 # Fall back: try python3, then python (Windows has no python3 shim)
-if [ -z "$GRAPHIFY_PYTHON" ]; then
-    if command -v python3 >/dev/null 2>&1 && python3 -c "import graphify" 2>/dev/null; then
-        GRAPHIFY_PYTHON="python3"
-    elif command -v python >/dev/null 2>&1 && python -c "import graphify" 2>/dev/null; then
-        GRAPHIFY_PYTHON="python"
+if [ -z "$GRAPH3D_PYTHON" ]; then
+    if command -v python3 >/dev/null 2>&1 && python3 -c "import graph3d" 2>/dev/null; then
+        GRAPH3D_PYTHON="python3"
+    elif command -v python >/dev/null 2>&1 && python -c "import graph3d" 2>/dev/null; then
+        GRAPH3D_PYTHON="python"
     else
         exit 0
     fi
@@ -44,13 +44,13 @@ fi
 """
 
 _HOOK_SCRIPT = """\
-# graphify-hook-start
+# graph3d-hook-start
 # Auto-rebuilds the knowledge graph after each commit (code files only, no LLM needed).
-# Installed by: graphify hook install
+# Installed by: graph3d hook install
 
 # Deterministic clustering: networkx louvain iterates string-keyed sets whose
 # order is randomized per-process by PYTHONHASHSEED, so community assignments
-# churn run-to-run. Pinning it makes graphify-out reproducible.
+# churn run-to-run. Pinning it makes graph3d-out reproducible.
 export PYTHONHASHSEED=0
 
 # Skip during rebase/merge/cherry-pick to avoid blocking --continue with unstaged changes
@@ -60,68 +60,68 @@ GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 [ -f "$GIT_DIR/MERGE_HEAD" ] && exit 0
 [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ] && exit 0
 
-[ "${GRAPHIFY_SKIP_HOOK:-0}" = "1" ] && exit 0
+[ "${GRAPH3D_SKIP_HOOK:-0}" = "1" ] && exit 0
 
 CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD 2>/dev/null)
 if [ -z "$CHANGED" ]; then
     exit 0
 fi
 
-# Skip when only graphify-out/ artifacts changed (avoids rebuild loop when graph outputs are tracked in git)
-_NON_GRAPH=$(echo "$CHANGED" | grep -v '^graphify-out/' || true)
+# Skip when only graph3d-out/ artifacts changed (avoids rebuild loop when graph outputs are tracked in git)
+_NON_GRAPH=$(echo "$CHANGED" | grep -v '^graph3d-out/' || true)
 if [ -z "$_NON_GRAPH" ]; then
     exit 0
 fi
 
 """ + _PYTHON_DETECT + """
-export GRAPHIFY_CHANGED="$CHANGED"
+export GRAPH3D_CHANGED="$CHANGED"
 
 # Run rebuild detached so git commit returns immediately.
 # Full repo rebuilds can take hours; blocking the post-commit hook stalls the shell.
-_GRAPHIFY_LOG="${HOME}/.cache/graphify-rebuild.log"
-mkdir -p "$(dirname "$_GRAPHIFY_LOG")"
-echo "[graphify hook] launching background rebuild (log: $_GRAPHIFY_LOG)"
-nohup $GRAPHIFY_PYTHON -c "
+_GRAPH3D_LOG="${HOME}/.cache/graph3d-rebuild.log"
+mkdir -p "$(dirname "$_GRAPH3D_LOG")"
+echo "[graph3d hook] launching background rebuild (log: $_GRAPH3D_LOG)"
+nohup $GRAPH3D_PYTHON -c "
 import os, signal, sys
 from pathlib import Path
 
-changed_raw = os.environ.get('GRAPHIFY_CHANGED', '')
+changed_raw = os.environ.get('GRAPH3D_CHANGED', '')
 changed = [Path(f.strip()) for f in changed_raw.strip().splitlines() if f.strip()]
 
 if not changed:
     sys.exit(0)
 
-print(f'[graphify hook] {len(changed)} file(s) changed - rebuilding graph...')
+print(f'[graph3d hook] {len(changed)} file(s) changed - rebuilding graph...')
 
 try:
-    from graphify.watch import _rebuild_code, _apply_resource_limits
+    from graph3d.watch import _rebuild_code, _apply_resource_limits
     _apply_resource_limits()
-    _timeout = int(os.environ.get('GRAPHIFY_REBUILD_TIMEOUT', '600'))
+    _timeout = int(os.environ.get('GRAPH3D_REBUILD_TIMEOUT', '600'))
     if _timeout > 0 and hasattr(signal, 'SIGALRM'):
-        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError(f'graphify rebuild exceeded {_timeout}s')))
+        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError(f'graph3d rebuild exceeded {_timeout}s')))
         signal.alarm(_timeout)
-    _force = os.environ.get('GRAPHIFY_FORCE', '').lower() in ('1', 'true', 'yes')
+    _force = os.environ.get('GRAPH3D_FORCE', '').lower() in ('1', 'true', 'yes')
     _rebuild_code(Path('.'), changed_paths=changed, force=_force)
 except TimeoutError as exc:
-    print(f'[graphify hook] {exc}')
+    print(f'[graph3d hook] {exc}')
     sys.exit(1)
 except Exception as exc:
-    print(f'[graphify hook] Rebuild failed: {exc}')
+    print(f'[graph3d hook] Rebuild failed: {exc}')
     sys.exit(1)
-" >> "$_GRAPHIFY_LOG" 2>&1 < /dev/null &
+" >> "$_GRAPH3D_LOG" 2>&1 < /dev/null &
 disown 2>/dev/null || true
-# graphify-hook-end
+# graph3d-hook-end
 """
 
 
 _CHECKOUT_SCRIPT = """\
-# graphify-checkout-hook-start
+# graph3d-checkout-hook-start
 # Auto-rebuilds the knowledge graph (code only) when switching branches.
-# Installed by: graphify hook install
+# Installed by: graph3d hook install
 
 # Deterministic clustering: networkx louvain iterates string-keyed sets whose
 # order is randomized per-process by PYTHONHASHSEED, so community assignments
-# churn run-to-run. Pinning it makes graphify-out reproducible.
+# churn run-to-run. Pinning it makes graph3d-out reproducible.
 export PYTHONHASHSEED=0
 
 PREV_HEAD=$1
@@ -133,8 +133,8 @@ if [ "$BRANCH_SWITCH" != "1" ]; then
     exit 0
 fi
 
-# Only run if graphify-out/ exists (graph has been built before)
-if [ ! -d "graphify-out" ]; then
+# Only run if graph3d-out/ exists (graph has been built before)
+if [ ! -d "graph3d-out" ]; then
     exit 0
 fi
 
@@ -146,33 +146,33 @@ GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ] && exit 0
 
 """ + _PYTHON_DETECT + """
-_GRAPHIFY_LOG="${HOME}/.cache/graphify-rebuild.log"
-mkdir -p "$(dirname "$_GRAPHIFY_LOG")"
-echo "[graphify] Branch switched - launching background rebuild (log: $_GRAPHIFY_LOG)"
-nohup $GRAPHIFY_PYTHON -c "
-from graphify.watch import _rebuild_code, _apply_resource_limits
+_GRAPH3D_LOG="${HOME}/.cache/graph3d-rebuild.log"
+mkdir -p "$(dirname "$_GRAPH3D_LOG")"
+echo "[graph3d] Branch switched - launching background rebuild (log: $_GRAPH3D_LOG)"
+nohup $GRAPH3D_PYTHON -c "
+from graph3d.watch import _rebuild_code, _apply_resource_limits
 from pathlib import Path
 import os, signal, sys
 try:
     _apply_resource_limits()
-    _timeout = int(os.environ.get('GRAPHIFY_REBUILD_TIMEOUT', '600'))
+    _timeout = int(os.environ.get('GRAPH3D_REBUILD_TIMEOUT', '600'))
     if _timeout > 0 and hasattr(signal, 'SIGALRM'):
-        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError(f'graphify rebuild exceeded {_timeout}s')))
+        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError(f'graph3d rebuild exceeded {_timeout}s')))
         signal.alarm(_timeout)
-    _force = os.environ.get('GRAPHIFY_FORCE', '').lower() in ('1', 'true', 'yes')
+    _force = os.environ.get('GRAPH3D_FORCE', '').lower() in ('1', 'true', 'yes')
     # post-checkout: branch switch can touch arbitrary files; full rebuild path
     # (no changed_paths) is correct here. The flock inside _rebuild_code still
     # prevents pile-ups when commit + checkout fire back-to-back.
     _rebuild_code(Path('.'), force=_force)
 except TimeoutError as exc:
-    print(f'[graphify] {exc}')
+    print(f'[graph3d] {exc}')
     sys.exit(1)
 except Exception as exc:
-    print(f'[graphify] Rebuild failed: {exc}')
+    print(f'[graph3d] Rebuild failed: {exc}')
     sys.exit(1)
-" >> "$_GRAPHIFY_LOG" 2>&1 < /dev/null &
+" >> "$_GRAPH3D_LOG" 2>&1 < /dev/null &
 disown 2>/dev/null || true
-# graphify-checkout-hook-end
+# graph3d-checkout-hook-end
 """
 
 
@@ -211,7 +211,7 @@ def _hooks_dir(root: Path) -> Path:
         # by another tool). Surface them on stderr instead of silently
         # falling through to the default hooks directory.
         print(
-            f"[graphify hooks] could not read core.hooksPath from "
+            f"[graph3d hooks] could not read core.hooksPath from "
             f"{root / '.git' / 'config'}: {exc}",
             file=sys.stderr,
         )
@@ -257,13 +257,13 @@ def _install_hook(hooks_dir: Path, name: str, script: str, marker: str) -> str:
 
 
 def _uninstall_hook(hooks_dir: Path, name: str, marker: str, marker_end: str) -> str:
-    """Remove graphify section from a git hook using start/end markers."""
+    """Remove graph3d section from a git hook using start/end markers."""
     hook_path = hooks_dir / name
     if not hook_path.exists():
         return f"no {name} hook found - nothing to remove."
     content = hook_path.read_text(encoding="utf-8")
     if marker not in content:
-        return f"graphify hook not found in {name} - nothing to remove."
+        return f"graph3d hook not found in {name} - nothing to remove."
     new_content = re.sub(
         rf"{re.escape(marker)}.*?{re.escape(marker_end)}\n?",
         "",
@@ -274,7 +274,7 @@ def _uninstall_hook(hooks_dir: Path, name: str, marker: str, marker_end: str) ->
         hook_path.unlink()
         return f"removed {name} hook at {hook_path}"
     hook_path.write_text(new_content + "\n", encoding="utf-8", newline="\n")
-    return f"graphify removed from {name} at {hook_path} (other hook content preserved)"
+    return f"graph3d removed from {name} at {hook_path} (other hook content preserved)"
 
 
 def _user_hooks_dir(hooks_dir: Path) -> Path:
@@ -291,7 +291,7 @@ def _user_hooks_dir(hooks_dir: Path) -> Path:
 
 
 def install(path: Path = Path(".")) -> str:
-    """Install graphify post-commit and post-checkout hooks in the nearest git repo."""
+    """Install graph3d post-commit and post-checkout hooks in the nearest git repo."""
     root = _git_root(path)
     if root is None:
         raise RuntimeError(f"No git repository found at or above {path.resolve()}")
@@ -305,7 +305,7 @@ def install(path: Path = Path(".")) -> str:
 
 
 def uninstall(path: Path = Path(".")) -> str:
-    """Remove graphify post-commit and post-checkout hooks."""
+    """Remove graph3d post-commit and post-checkout hooks."""
     root = _git_root(path)
     if root is None:
         raise RuntimeError(f"No git repository found at or above {path.resolve()}")
@@ -318,7 +318,7 @@ def uninstall(path: Path = Path(".")) -> str:
 
 
 def status(path: Path = Path(".")) -> str:
-    """Check if graphify hooks are installed."""
+    """Check if graph3d hooks are installed."""
     root = _git_root(path)
     if root is None:
         return "Not in a git repository."
@@ -328,7 +328,7 @@ def status(path: Path = Path(".")) -> str:
         p = hooks_dir / name
         if not p.exists():
             return "not installed"
-        return "installed" if marker in p.read_text(encoding="utf-8") else "not installed (hook exists but graphify not found)"
+        return "installed" if marker in p.read_text(encoding="utf-8") else "not installed (hook exists but graph3d not found)"
 
     commit = _check("post-commit", _HOOK_MARKER)
     checkout = _check("post-checkout", _CHECKOUT_MARKER)

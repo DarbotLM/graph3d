@@ -5,7 +5,7 @@ import json
 import networkx as nx
 from networkx.readwrite import json_graph
 
-import graphify.__main__ as mainmod
+import graph3d.__main__ as mainmod
 
 
 def _write_graph(tmp_path):
@@ -28,7 +28,7 @@ def test_affected_cli_reverse_traverses_impact_edges(monkeypatch, tmp_path, caps
     monkeypatch.setattr(
         mainmod.sys,
         "argv",
-        ["graphify", "affected", "Foo", "--graph", str(graph_path)],
+        ["graph3d", "affected", "Foo", "--graph", str(graph_path)],
     )
 
     mainmod.main()
@@ -49,7 +49,7 @@ def test_affected_cli_relation_filter_limits_reverse_traversal(monkeypatch, tmp_
     monkeypatch.setattr(
         mainmod.sys,
         "argv",
-        ["graphify", "affected", "Foo", "--relation", "calls", "--graph", str(graph_path)],
+        ["graph3d", "affected", "Foo", "--relation", "calls", "--graph", str(graph_path)],
     )
 
     mainmod.main()

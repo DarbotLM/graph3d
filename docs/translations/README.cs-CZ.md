@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/safishamsi/graphify/v4/docs/logo-text.svg" width="260" height="64" alt="Graphify"/>
+  <img src="https://raw.githubusercontent.com/DarbotLM/graph3d/v4/docs/logo-text.svg" width="260" height="64" alt="Graph3d"/>
 </p>
 
 <p align="center">
@@ -7,24 +7,24 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/safishamsi/graphify/actions/workflows/ci.yml"><img src="https://github.com/safishamsi/graphify/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
-  <a href="https://pypi.org/project/graphifyy/"><img src="https://img.shields.io/pypi/v/graphifyy" alt="PyPI"/></a>
-  <a href="https://pepy.tech/project/graphifyy"><img src="https://static.pepy.tech/badge/graphifyy" alt="Downloads"/></a>
+  <a href="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml"><img src="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
+  <a href="https://pypi.org/project/graph3d/"><img src="https://img.shields.io/pypi/v/graph3d" alt="PyPI"/></a>
+  <a href="https://pepy.tech/project/graph3d"><img src="https://static.pepy.tech/badge/graph3d" alt="Downloads"/></a>
   <a href="https://github.com/sponsors/safishamsi"><img src="https://img.shields.io/badge/sponsor-safishamsi-ea4aaa?logo=github-sponsors" alt="Sponsor"/></a>
 </p>
 
-**Dovednost pro asistenty kódování AI.** Napište `/graphify` v Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro nebo Google Antigravity — přečte vaše soubory, vytvoří znalostní graf a vrátí vám strukturu, o které jste nevěděli, že existuje. Pochopte kódovou základnu rychleji. Najděte „proč" za architektonickými rozhodnutími.
+**Dovednost pro asistenty kódování AI.** Napište `/graph3d` v Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro nebo Google Antigravity — přečte vaše soubory, vytvoří znalostní graf a vrátí vám strukturu, o které jste nevěděli, že existuje. Pochopte kódovou základnu rychleji. Najděte „proč" za architektonickými rozhodnutími.
 
-Plně multimodální. Přidejte kód, PDF, markdown, snímky obrazovky, diagramy, fotografie tabule, obrázky v jiných jazycích nebo video a zvukové soubory — graphify extrahuje koncepty a vztahy ze všeho a spojuje je do jediného grafu. Videa jsou přepisována lokálně pomocí Whisper. Podporuje 25 programovacích jazyků prostřednictvím tree-sitter AST.
+Plně multimodální. Přidejte kód, PDF, markdown, snímky obrazovky, diagramy, fotografie tabule, obrázky v jiných jazycích nebo video a zvukové soubory — graph3d extrahuje koncepty a vztahy ze všeho a spojuje je do jediného grafu. Videa jsou přepisována lokálně pomocí Whisper. Podporuje 25 programovacích jazyků prostřednictvím tree-sitter AST.
 
-> Andrej Karpathy udržuje složku `/raw`, kde ukládá články, tweety, snímky obrazovky a poznámky. graphify je odpovědí na tento problém — **71,5x** méně tokenů na dotaz ve srovnání se čtením surových souborů, přetrvávající mezi sezeními.
-
-```
-/graphify .
-```
+> Andrej Karpathy udržuje složku `/raw`, kde ukládá články, tweety, snímky obrazovky a poznámky. graph3d je odpovědí na tento problém — **71,5x** méně tokenů na dotaz ve srovnání se čtením surových souborů, přetrvávající mezi sezeními.
 
 ```
-graphify-out/
+/graph3d .
+```
+
+```
+graph3d-out/
 ├── graph.html       interaktivní graf — otevřete v libovolném prohlížeči
 ├── GRAPH_REPORT.md  boží uzly, překvapivá propojení, navrhované otázky
 ├── graph.json       trvalý graf — dotazovatelný týdny poté
@@ -33,7 +33,7 @@ graphify-out/
 
 ## Jak to funguje
 
-graphify pracuje ve třech průchodech. Nejprve deterministický průchod AST extrahuje strukturu z kódových souborů bez LLM. Poté jsou video a zvukové soubory přepisovány lokálně pomocí faster-whisper. Nakonec sub-agenti Claude běží paralelně na dokumentech, článcích, obrázcích a přepisech. Výsledky jsou sloučeny do grafu NetworkX, clusterovány pomocí Leiden a exportovány jako interaktivní HTML, dotazovatelný JSON a auditní zpráva.
+graph3d pracuje ve třech průchodech. Nejprve deterministický průchod AST extrahuje strukturu z kódových souborů bez LLM. Poté jsou video a zvukové soubory přepisovány lokálně pomocí faster-whisper. Nakonec sub-agenti Claude běží paralelně na dokumentech, článcích, obrázcích a přepisech. Výsledky jsou sloučeny do grafu NetworkX, clusterovány pomocí Leiden a exportovány jako interaktivní HTML, dotazovatelný JSON a auditní zpráva.
 
 Každý vztah je označen `EXTRACTED`, `INFERRED` (se skóre spolehlivosti) nebo `AMBIGUOUS`.
 
@@ -42,24 +42,24 @@ Každý vztah je označen `EXTRACTED`, `INFERRED` (se skóre spolehlivosti) nebo
 **Požadavky:** Python 3.10+ a jedno z: [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex), [OpenCode](https://opencode.ai), [Cursor](https://cursor.com) a další.
 
 ```bash
-uv tool install graphifyy && graphify install
+uv tool install graph3d && graph3d install
 # nebo s pipx
-pipx install graphifyy && graphify install
+pipx install graph3d && graph3d install
 # nebo pip
-pip install graphifyy && graphify install
+pip install graph3d && graph3d install
 ```
 
-> **Oficiální balíček:** Balíček PyPI se jmenuje `graphifyy`. Jediné oficiální úložiště je [safishamsi/graphify](https://github.com/safishamsi/graphify).
+> **Oficiální balíček:** Balíček PyPI se jmenuje `graph3d`. Jediné oficiální úložiště je [DarbotLM/graph3d](https://github.com/DarbotLM/graph3d).
 
 ## Použití
 
 ```
-/graphify .
-/graphify ./raw --update
-/graphify query "co spojuje Attention s optimizerem?"
-/graphify path "DigestAuth" "Response"
-graphify hook install
-graphify update ./src
+/graph3d .
+/graph3d ./raw --update
+/graph3d query "co spojuje Attention s optimizerem?"
+/graph3d path "DigestAuth" "Response"
+graph3d hook install
+graph3d update ./src
 ```
 
 ## Co získáte
@@ -70,8 +70,8 @@ graphify update ./src
 
 Kódové soubory jsou zpracovávány lokálně prostřednictvím tree-sitter AST. Videa jsou přepisována lokálně pomocí faster-whisper. Žádná telemetrie.
 
-## Postaveno na graphify — Penpax
+## Postaveno na graph3d — Penpax
 
-[**Penpax**](https://safishamsi.github.io/penpax.ai) je enterprise vrstva nad graphify. **Bezplatná zkušební verze brzy.** [Přidejte se na čekací listinu →](https://safishamsi.github.io/penpax.ai)
+[**Penpax**](https://safishamsi.github.io/penpax.ai) je enterprise vrstva nad graph3d. **Bezplatná zkušební verze brzy.** [Přidejte se na čekací listinu →](https://safishamsi.github.io/penpax.ai)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=safishamsi/graphify&type=Date)](https://star-history.com/#safishamsi/graphify&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=DarbotLM/graph3d&type=Date)](https://star-history.com/#DarbotLM/graph3d&Date)

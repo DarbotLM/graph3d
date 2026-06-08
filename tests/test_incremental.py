@@ -1,4 +1,4 @@
-"""Integration tests for incremental graphify extract behavior."""
+"""Integration tests for incremental graph3d extract behavior."""
 from __future__ import annotations
 import json
 import subprocess
@@ -12,7 +12,7 @@ PYTHON = sys.executable
 
 def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [PYTHON, "-m", "graphify"] + args,
+        [PYTHON, "-m", "graph3d"] + args,
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -34,14 +34,14 @@ def test_manifest_written_after_extract(tmp_path):
     # Should fail with no API key — but NOT with a path error
     assert "no LLM API key" in r.stderr or r.returncode != 0
     # manifest should NOT exist (run failed before writing)
-    manifest = docs / "graphify-out" / "manifest.json"
+    manifest = docs / "graph3d-out" / "manifest.json"
     assert not manifest.exists()
 
 
 def test_incremental_mode_detected_via_manifest(tmp_path):
     """If manifest.json + graph.json exist, incremental mode message is shown."""
     docs = _make_docs_corpus(tmp_path)
-    out = docs / "graphify-out"
+    out = docs / "graph3d-out"
     out.mkdir()
     (out / "graph.json").write_text(json.dumps({"nodes": [], "links": []}))
     (out / "manifest.json").write_text(json.dumps({"document": [str(docs / "intro.md")]}))

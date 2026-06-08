@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/safishamsi/graphify/v4/docs/logo-text.svg" width="260" height="64" alt="Graphify"/>
+  <img src="https://raw.githubusercontent.com/DarbotLM/graph3d/v4/docs/logo-text.svg" width="260" height="64" alt="Graph3d"/>
 </p>
 
 <p align="center">
@@ -7,24 +7,24 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/safishamsi/graphify/actions/workflows/ci.yml"><img src="https://github.com/safishamsi/graphify/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
-  <a href="https://pypi.org/project/graphifyy/"><img src="https://img.shields.io/pypi/v/graphifyy" alt="PyPI"/></a>
-  <a href="https://pepy.tech/project/graphifyy"><img src="https://static.pepy.tech/badge/graphifyy" alt="Downloads"/></a>
+  <a href="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml"><img src="https://github.com/DarbotLM/graph3d/actions/workflows/ci.yml/badge.svg?branch=v4" alt="CI"/></a>
+  <a href="https://pypi.org/project/graph3d/"><img src="https://img.shields.io/pypi/v/graph3d" alt="PyPI"/></a>
+  <a href="https://pepy.tech/project/graph3d"><img src="https://static.pepy.tech/badge/graph3d" alt="Downloads"/></a>
   <a href="https://github.com/sponsors/safishamsi"><img src="https://img.shields.io/badge/sponsor-safishamsi-ea4aaa?logo=github-sponsors" alt="Sponsor"/></a>
 </p>
 
-**Yapay zeka kod asistanları için bir beceri.** Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro veya Google Antigravity'de `/graphify` yazın — dosyalarınızı okur, bir bilgi grafiği oluşturur ve farkında olmadığınız yapıyı size geri verir. Kod tabanını daha hızlı anlayın. Mimari kararların arkasındaki "neden"i bulun.
+**Yapay zeka kod asistanları için bir beceri.** Claude Code, Codex, OpenCode, Cursor, Gemini CLI, GitHub Copilot CLI, VS Code Copilot Chat, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro veya Google Antigravity'de `/graph3d` yazın — dosyalarınızı okur, bir bilgi grafiği oluşturur ve farkında olmadığınız yapıyı size geri verir. Kod tabanını daha hızlı anlayın. Mimari kararların arkasındaki "neden"i bulun.
 
-Tamamen çok modlu. Kod, PDF, markdown, ekran görüntüleri, diyagramlar, beyaz tahta fotoğrafları, başka dillerdeki görüntüler veya video ve ses dosyaları ekleyin — graphify her şeyden kavramları ve ilişkileri çıkarır ve bunları tek bir grafikte birleştirir. Videolar Whisper ile yerel olarak transkribe edilir. tree-sitter AST aracılığıyla 25 programlama dilini destekler.
+Tamamen çok modlu. Kod, PDF, markdown, ekran görüntüleri, diyagramlar, beyaz tahta fotoğrafları, başka dillerdeki görüntüler veya video ve ses dosyaları ekleyin — graph3d her şeyden kavramları ve ilişkileri çıkarır ve bunları tek bir grafikte birleştirir. Videolar Whisper ile yerel olarak transkribe edilir. tree-sitter AST aracılığıyla 25 programlama dilini destekler.
 
-> Andrej Karpathy, makaleleri, tweetleri, ekran görüntülerini ve notları bıraktığı bir `/raw` klasörü tutar. graphify bu soruna yanıttır — ham dosyaları okumaya kıyasla sorgu başına **71,5x** daha az token, oturumlar arasında kalıcı.
-
-```
-/graphify .
-```
+> Andrej Karpathy, makaleleri, tweetleri, ekran görüntülerini ve notları bıraktığı bir `/raw` klasörü tutar. graph3d bu soruna yanıttır — ham dosyaları okumaya kıyasla sorgu başına **71,5x** daha az token, oturumlar arasında kalıcı.
 
 ```
-graphify-out/
+/graph3d .
+```
+
+```
+graph3d-out/
 ├── graph.html       etkileşimli grafik — herhangi bir tarayıcıda açın
 ├── GRAPH_REPORT.md  tanrı düğümleri, şaşırtıcı bağlantılar, önerilen sorular
 ├── graph.json       kalıcı grafik — haftalar sonra sorgulanabilir
@@ -33,7 +33,7 @@ graphify-out/
 
 ## Nasıl çalışır
 
-graphify üç geçişte çalışır. Önce deterministik bir AST geçişi, LLM olmadan kod dosyalarından yapı çıkarır. Ardından video ve ses dosyaları faster-whisper ile yerel olarak transkribe edilir. Son olarak Claude alt ajanları belgeler, makaleler, görüntüler ve transkriptler üzerinde paralel olarak çalışır. Sonuçlar bir NetworkX grafiğinde birleştirilir, Leiden ile kümelenir ve etkileşimli HTML, sorgulanabilir JSON ve denetim raporu olarak dışa aktarılır.
+graph3d üç geçişte çalışır. Önce deterministik bir AST geçişi, LLM olmadan kod dosyalarından yapı çıkarır. Ardından video ve ses dosyaları faster-whisper ile yerel olarak transkribe edilir. Son olarak Claude alt ajanları belgeler, makaleler, görüntüler ve transkriptler üzerinde paralel olarak çalışır. Sonuçlar bir NetworkX grafiğinde birleştirilir, Leiden ile kümelenir ve etkileşimli HTML, sorgulanabilir JSON ve denetim raporu olarak dışa aktarılır.
 
 Her ilişki `EXTRACTED`, `INFERRED` (güven puanıyla) veya `AMBIGUOUS` olarak etiketlenir.
 
@@ -42,24 +42,24 @@ Her ilişki `EXTRACTED`, `INFERRED` (güven puanıyla) veya `AMBIGUOUS` olarak e
 **Gereksinimler:** Python 3.10+ ve şunlardan biri: [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex), [OpenCode](https://opencode.ai), [Cursor](https://cursor.com) ve diğerleri.
 
 ```bash
-uv tool install graphifyy && graphify install
+uv tool install graph3d && graph3d install
 # veya pipx ile
-pipx install graphifyy && graphify install
+pipx install graph3d && graph3d install
 # veya pip
-pip install graphifyy && graphify install
+pip install graph3d && graph3d install
 ```
 
-> **Resmi paket:** PyPI paketi `graphifyy` olarak adlandırılır. Tek resmi depo [safishamsi/graphify](https://github.com/safishamsi/graphify)'dir.
+> **Resmi paket:** PyPI paketi `graph3d` olarak adlandırılır. Tek resmi depo [DarbotLM/graph3d](https://github.com/DarbotLM/graph3d)'dir.
 
 ## Kullanım
 
 ```
-/graphify .
-/graphify ./raw --update
-/graphify query "Attention'ı optimizer'a ne bağlıyor?"
-/graphify path "DigestAuth" "Response"
-graphify hook install
-graphify update ./src
+/graph3d .
+/graph3d ./raw --update
+/graph3d query "Attention'ı optimizer'a ne bağlıyor?"
+/graph3d path "DigestAuth" "Response"
+graph3d hook install
+graph3d update ./src
 ```
 
 ## Ne elde edersiniz
@@ -70,8 +70,8 @@ graphify update ./src
 
 Kod dosyaları tree-sitter AST aracılığıyla yerel olarak işlenir. Videolar faster-whisper ile yerel olarak transkribe edilir. Telemetri yok.
 
-## graphify üzerine inşa edildi — Penpax
+## graph3d üzerine inşa edildi — Penpax
 
-[**Penpax**](https://safishamsi.github.io/penpax.ai), graphify üzerindeki kurumsal katmandır. **Ücretsiz deneme yakında.** [Bekleme listesine katılın →](https://safishamsi.github.io/penpax.ai)
+[**Penpax**](https://safishamsi.github.io/penpax.ai), graph3d üzerindeki kurumsal katmandır. **Ücretsiz deneme yakında.** [Bekleme listesine katılın →](https://safishamsi.github.io/penpax.ai)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=safishamsi/graphify&type=Date)](https://star-history.com/#safishamsi/graphify&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=DarbotLM/graph3d&type=Date)](https://star-history.com/#DarbotLM/graph3d&Date)

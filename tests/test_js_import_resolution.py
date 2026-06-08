@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from graphify.extract import _file_node_id, _file_stem, _make_id, extract
+from graph3d.extract import _file_node_id, _file_stem, _make_id, extract
 
 
 def _write(path: Path, text: str) -> Path:

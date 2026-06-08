@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-import graphify.__main__ as mainmod
-from graphify.diagnostics import (
+import graph3d.__main__ as mainmod
+from graph3d.diagnostics import (
     diagnose_extraction,
     diagnose_file,
     format_diagnostic_json,
@@ -204,7 +204,7 @@ def test_diagnose_file_reads_json_and_formats_report(tmp_path: Path) -> None:
     report = format_diagnostic_report(summary)
 
     assert summary["input_path"] == str(graph_path)
-    assert "[graphify] MultiDiGraph edge-collapse diagnostic" in report
+    assert "[graph3d] MultiDiGraph edge-collapse diagnostic" in report
     assert "directed_same_endpoint_collapsed_edges: 3" in report
     assert "relation_variant_groups: 1" in report
     assert "producer_suppression_sites:" in report
@@ -279,7 +279,7 @@ def test_scan_producer_suppression_sites_handles_unknown_tuple_arity(tmp_path: P
 def test_diagnose_file_rejects_oversized_graph(monkeypatch, tmp_path: Path) -> None:
     graph_path = tmp_path / "graph.json"
     graph_path.write_text(json.dumps(_diagnostic_fixture()), encoding="utf-8")
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 16)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 16)
 
     with pytest.raises(ValueError, match="exceeds"):
         diagnose_file(graph_path)
@@ -332,13 +332,13 @@ def test_diagnose_multigraph_cli_human_output(monkeypatch, tmp_path: Path, capsy
     monkeypatch.setattr(
         mainmod.sys,
         "argv",
-        ["graphify", "diagnose", "multigraph", "--graph", str(graph_path)],
+        ["graph3d", "diagnose", "multigraph", "--graph", str(graph_path)],
     )
 
     mainmod.main()
 
     out = capsys.readouterr().out
-    assert "[graphify] MultiDiGraph edge-collapse diagnostic" in out
+    assert "[graph3d] MultiDiGraph edge-collapse diagnostic" in out
     assert "raw_edges: 7" in out
     assert "effective_directed: True" in out
     assert "directed_same_endpoint_collapsed_edges: 3" in out
@@ -353,7 +353,7 @@ def test_diagnose_multigraph_cli_undirected_override(monkeypatch, tmp_path: Path
     monkeypatch.setattr(
         mainmod.sys,
         "argv",
-        ["graphify", "diagnose", "multigraph", "--graph", str(graph_path), "--undirected"],
+        ["graph3d", "diagnose", "multigraph", "--graph", str(graph_path), "--undirected"],
     )
 
     mainmod.main()
@@ -371,7 +371,7 @@ def test_diagnose_multigraph_cli_max_examples_zero(monkeypatch, tmp_path: Path, 
         mainmod.sys,
         "argv",
         [
-            "graphify",
+            "graph3d",
             "diagnose",
             "multigraph",
             "--graph",
@@ -393,7 +393,7 @@ def test_diagnose_multigraph_cli_json_output(monkeypatch, tmp_path: Path, capsys
     monkeypatch.setattr(
         mainmod.sys,
         "argv",
-        ["graphify", "diagnose", "multigraph", "--graph", str(graph_path), "--json"],
+        ["graph3d", "diagnose", "multigraph", "--graph", str(graph_path), "--json"],
     )
 
     mainmod.main()
@@ -406,8 +406,8 @@ def test_diagnose_multigraph_cli_json_output(monkeypatch, tmp_path: Path, capsys
 @pytest.mark.parametrize(
     ("argv_tail", "expected"),
     [
-        ([], "Usage: graphify diagnose multigraph"),
-        (["wrong"], "Usage: graphify diagnose multigraph"),
+        ([], "Usage: graph3d diagnose multigraph"),
+        (["wrong"], "Usage: graph3d diagnose multigraph"),
         (["multigraph", "--graph"], "error: --graph requires a path"),
         (["multigraph", "--max-examples"], "error: --max-examples requires an integer"),
         (["multigraph", "--max-examples", "many"], "error: --max-examples requires an integer"),
@@ -422,7 +422,7 @@ def test_diagnose_multigraph_cli_usage_errors(
     expected: str,
 ) -> None:
     monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
-    monkeypatch.setattr(mainmod.sys, "argv", ["graphify", "diagnose", *argv_tail])
+    monkeypatch.setattr(mainmod.sys, "argv", ["graph3d", "diagnose", *argv_tail])
 
     with pytest.raises(SystemExit) as exc_info:
         mainmod.main()
@@ -443,7 +443,7 @@ def test_diagnose_multigraph_cli_rejects_conflicting_direction_flags(
         mainmod.sys,
         "argv",
         [
-            "graphify",
+            "graph3d",
             "diagnose",
             "multigraph",
             "--graph",

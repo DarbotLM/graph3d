@@ -1,4 +1,4 @@
-"""Tests for graphify/prs.py."""
+"""Tests for graph3d/prs.py."""
 from __future__ import annotations
 
 import subprocess
@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 import networkx as nx
 import pytest
 
-from graphify.prs import (
+from graph3d.prs import (
     PRInfo,
     _classify,
     _parse_ci,
@@ -223,7 +223,7 @@ class TestFetchWorktrees:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = porcelain
-        with patch("graphify.prs.subprocess.run", return_value=mock_result):
+        with patch("graph3d.prs.subprocess.run", return_value=mock_result):
             mapping = fetch_worktrees()
         assert mapping == {
             "main": "/home/user/proj",
@@ -246,7 +246,7 @@ class TestFetchWorktrees:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = porcelain
-        with patch("graphify.prs.subprocess.run", return_value=mock_result):
+        with patch("graph3d.prs.subprocess.run", return_value=mock_result):
             mapping = fetch_worktrees()
         # Only feature-x should be mapped, and it should point to its own worktree
         assert mapping == {"feature-x": "/home/user/proj-feature"}
@@ -256,7 +256,7 @@ class TestFetchWorktrees:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = ""
-        with patch("graphify.prs.subprocess.run", return_value=mock_result):
+        with patch("graph3d.prs.subprocess.run", return_value=mock_result):
             mapping = fetch_worktrees()
         assert mapping == {}
 
@@ -264,13 +264,13 @@ class TestFetchWorktrees:
         mock_result = MagicMock()
         mock_result.returncode = 1
         mock_result.stdout = ""
-        with patch("graphify.prs.subprocess.run", return_value=mock_result):
+        with patch("graph3d.prs.subprocess.run", return_value=mock_result):
             mapping = fetch_worktrees()
         assert mapping == {}
 
     def test_subprocess_failure_returns_empty_dict(self):
         with patch(
-            "graphify.prs.subprocess.run",
+            "graph3d.prs.subprocess.run",
             side_effect=FileNotFoundError("git not found"),
         ):
             mapping = fetch_worktrees()
@@ -333,7 +333,7 @@ class TestFormatPrsText:
 class TestDetectDefaultBranch:
     def test_gh_returns_main(self):
         with patch(
-            "graphify.prs._gh",
+            "graph3d.prs._gh",
             return_value={"defaultBranchRef": {"name": "main"}},
         ):
             assert _detect_default_branch() == "main"
@@ -342,8 +342,8 @@ class TestDetectDefaultBranch:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "refs/remotes/origin/develop\n"
-        with patch("graphify.prs._gh", return_value=None), patch(
-            "graphify.prs.subprocess.run", return_value=mock_result
+        with patch("graph3d.prs._gh", return_value=None), patch(
+            "graph3d.prs.subprocess.run", return_value=mock_result
         ):
             assert _detect_default_branch() == "develop"
 
@@ -351,8 +351,8 @@ class TestDetectDefaultBranch:
         mock_result = MagicMock()
         mock_result.returncode = 1
         mock_result.stdout = ""
-        with patch("graphify.prs._gh", return_value=None), patch(
-            "graphify.prs.subprocess.run", return_value=mock_result
+        with patch("graph3d.prs._gh", return_value=None), patch(
+            "graph3d.prs.subprocess.run", return_value=mock_result
         ):
             assert _detect_default_branch() == "main"
 
@@ -361,14 +361,14 @@ class TestDetectDefaultBranch:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "refs/remotes/origin/trunk\n"
-        with patch("graphify.prs._gh", return_value={}), patch(
-            "graphify.prs.subprocess.run", return_value=mock_result
+        with patch("graph3d.prs._gh", return_value={}), patch(
+            "graph3d.prs.subprocess.run", return_value=mock_result
         ):
             assert _detect_default_branch() == "trunk"
 
     def test_git_timeout_returns_main(self):
-        with patch("graphify.prs._gh", return_value=None), patch(
-            "graphify.prs.subprocess.run",
+        with patch("graph3d.prs._gh", return_value=None), patch(
+            "graph3d.prs.subprocess.run",
             side_effect=subprocess.TimeoutExpired("git", 5),
         ):
             assert _detect_default_branch() == "main"

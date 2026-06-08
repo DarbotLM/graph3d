@@ -7,7 +7,7 @@ from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph as _jg
 
-_GLOBAL_DIR = Path.home() / ".graphify"
+_GLOBAL_DIR = Path.home() / ".graph3d"
 _GLOBAL_GRAPH = _GLOBAL_DIR / "global-graph.json"
 _GLOBAL_MANIFEST = _GLOBAL_DIR / "global-manifest.json"
 
@@ -28,7 +28,7 @@ def _save_manifest(manifest: dict) -> None:
 
 def _load_global_graph() -> nx.Graph:
     if _GLOBAL_GRAPH.exists():
-        from graphify.security import check_graph_file_size_cap
+        from graph3d.security import check_graph_file_size_cap
         check_graph_file_size_cap(_GLOBAL_GRAPH)
         data = json.loads(_GLOBAL_GRAPH.read_text(encoding="utf-8"))
         if "links" not in data and "edges" in data:
@@ -61,7 +61,7 @@ def global_add(source_path: Path, repo_tag: str) -> dict:
     Returns a summary dict with keys: repo_tag, nodes_added, nodes_removed, skipped.
     Skipped=True means the source graph hasn't changed since last add.
     """
-    from graphify.build import prefix_graph_for_global, prune_repo_from_graph
+    from graph3d.build import prefix_graph_for_global, prune_repo_from_graph
 
     if not source_path.exists():
         raise FileNotFoundError(f"graph not found: {source_path}")
@@ -73,7 +73,7 @@ def global_add(source_path: Path, repo_tag: str) -> dict:
     existing_path = existing.get("source_path", "")
     if existing_path and existing_path != str(source_path.resolve()):
         print(
-            f"[graphify global] warning: repo tag '{repo_tag}' previously pointed to "
+            f"[graph3d global] warning: repo tag '{repo_tag}' previously pointed to "
             f"{existing_path!r}, now updating to {str(source_path.resolve())!r}. "
             f"Use --as <tag> to give it a different name.",
             file=sys.stderr,
@@ -82,7 +82,7 @@ def global_add(source_path: Path, repo_tag: str) -> dict:
         return {"repo_tag": repo_tag, "nodes_added": 0, "nodes_removed": 0, "skipped": True}
 
     # Load source graph
-    from graphify.security import check_graph_file_size_cap
+    from graph3d.security import check_graph_file_size_cap
     check_graph_file_size_cap(source_path)
     data = json.loads(source_path.read_text(encoding="utf-8"))
     if "links" not in data and "edges" in data:
@@ -135,7 +135,7 @@ def global_add(source_path: Path, repo_tag: str) -> dict:
 
 def global_remove(repo_tag: str) -> int:
     """Remove all nodes for repo_tag from the global graph. Returns count removed."""
-    from graphify.build import prune_repo_from_graph
+    from graph3d.build import prune_repo_from_graph
 
     manifest = _load_manifest()
     if repo_tag not in manifest["repos"]:

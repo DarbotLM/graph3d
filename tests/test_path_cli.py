@@ -1,9 +1,9 @@
-"""Regression tests for `graphify path` arrow direction (#849)."""
+"""Regression tests for `graph3d path` arrow direction (#849)."""
 from __future__ import annotations
 import json
 import networkx as nx
 from networkx.readwrite import json_graph
-import graphify.__main__ as mainmod
+import graph3d.__main__ as mainmod
 
 
 def _write_graph(tmp_path):
@@ -28,7 +28,7 @@ def _write_graph(tmp_path):
 def _run(monkeypatch, graph_path, src, tgt, capsys):
     monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
     monkeypatch.setattr(mainmod.sys, "argv",
-        ["graphify", "path", src, tgt, "--graph", str(graph_path)])
+        ["graph3d", "path", src, tgt, "--graph", str(graph_path)])
     mainmod.main()
     return capsys.readouterr().out
 

@@ -1,4 +1,4 @@
-"""graphify CLI - `graphify install` sets up the Claude Code skill."""
+"""graph3d CLI - `graph3d install` sets up the Claude Code skill."""
 from __future__ import annotations
 import json
 import os
@@ -10,23 +10,23 @@ from pathlib import Path
 
 try:
     from importlib.metadata import version as _pkg_version
-    __version__ = _pkg_version("graphifyy")
+    __version__ = _pkg_version("graph3d")
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
-# Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
-_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+# Output directory — override with GRAPH3D_OUT env var for worktrees or shared-output setups.
+# Accepts a relative name ("graph3d-out-feature") or an absolute path ("/shared/graph3d-out").
+_GRAPH3D_OUT = os.environ.get("GRAPH3D_OUT", "graph3d-out")
 
 
 def _default_graph_path() -> str:
-    return str(Path(_GRAPHIFY_OUT) / "graph.json")
+    return str(Path(_GRAPH3D_OUT) / "graph.json")
 
 
 def _enforce_graph_size_cap_or_exit(gp: Path) -> None:
     """Reject oversized graph files before parsing (CLI exit-on-fail flavor).
 
-    Delegates to ``graphify.security.check_graph_file_size_cap`` and turns the
+    Delegates to ``graph3d.security.check_graph_file_size_cap`` and turns the
     raised ``ValueError`` into a CLI-style ``error: ...`` message + exit 1.
     Use this from ``__main__.py`` subcommands that already use the ``print +
     sys.exit(1)`` idiom. Library/MCP/loader callers (``serve._load_graph``,
@@ -34,7 +34,7 @@ def _enforce_graph_size_cap_or_exit(gp: Path) -> None:
     ``global_graph``, ``watch``, ``export``) call the security helper directly
     and let the ``ValueError`` propagate.
     """
-    from graphify.security import check_graph_file_size_cap
+    from graph3d.security import check_graph_file_size_cap
     try:
         check_graph_file_size_cap(gp)
     except ValueError as exc:
@@ -43,27 +43,27 @@ def _enforce_graph_size_cap_or_exit(gp: Path) -> None:
 
 
 def _check_skill_version(skill_dst: Path) -> None:
-    """Warn if the installed skill is from an older graphify version."""
-    version_file = skill_dst.parent / ".graphify_version"
+    """Warn if the installed skill is from an older graph3d version."""
+    version_file = skill_dst.parent / ".graph3d_version"
     if not version_file.exists():
         return
     if not skill_dst.exists():
-        print("  warning: skill dir exists but SKILL.md is missing. Run 'graphify install' to repair.")
+        print("  warning: skill dir exists but SKILL.md is missing. Run 'graph3d install' to repair.")
         return
     installed = version_file.read_text(encoding="utf-8").strip()
     if installed != __version__:
-        print(f"  warning: skill is from graphify {installed}, package is {__version__}. Run 'graphify install' to update.", file=sys.stderr)
+        print(f"  warning: skill is from graph3d {installed}, package is {__version__}. Run 'graph3d install' to update.", file=sys.stderr)
 
 
 def _refresh_all_version_stamps() -> None:
-    """After a successful install, update .graphify_version in all other known skill dirs.
+    """After a successful install, update .graph3d_version in all other known skill dirs.
 
     Prevents stale-version warnings from platforms that were installed previously
     but not explicitly re-installed during this upgrade.
     """
     for name in _PLATFORM_CONFIG:
         skill_dst = _platform_skill_destination(name)
-        vf = skill_dst.parent / ".graphify_version"
+        vf = skill_dst.parent / ".graph3d_version"
         if skill_dst.exists():
             vf.write_text(__version__, encoding="utf-8")
 
@@ -72,33 +72,33 @@ def _platform_skill_destination(platform_name: str, *, project: bool = False, pr
     """Return the skill destination for a platform and scope."""
     if platform_name == "gemini":
         if project:
-            return (project_dir or Path(".")) / ".gemini" / "skills" / "graphify" / "SKILL.md"
+            return (project_dir or Path(".")) / ".gemini" / "skills" / "graph3d" / "SKILL.md"
         if platform.system() == "Windows":
-            return Path.home() / ".agents" / "skills" / "graphify" / "SKILL.md"
-        return Path.home() / ".gemini" / "skills" / "graphify" / "SKILL.md"
+            return Path.home() / ".agents" / "skills" / "graph3d" / "SKILL.md"
+        return Path.home() / ".gemini" / "skills" / "graph3d" / "SKILL.md"
 
     if platform_name == "opencode":
         if project:
-            return (project_dir or Path(".")) / ".opencode" / "skills" / "graphify" / "SKILL.md"
-        return Path.home() / ".config" / "opencode" / "skills" / "graphify" / "SKILL.md"
+            return (project_dir or Path(".")) / ".opencode" / "skills" / "graph3d" / "SKILL.md"
+        return Path.home() / ".config" / "opencode" / "skills" / "graph3d" / "SKILL.md"
 
     if platform_name == "devin":
         if project:
-            return (project_dir or Path(".")) / ".devin" / "skills" / "graphify" / "SKILL.md"
-        return Path.home() / ".config" / "devin" / "skills" / "graphify" / "SKILL.md"
+            return (project_dir or Path(".")) / ".devin" / "skills" / "graph3d" / "SKILL.md"
+        return Path.home() / ".config" / "devin" / "skills" / "graph3d" / "SKILL.md"
 
     if platform_name in ("antigravity", "antigravity-windows"):
         if project:
-            return (project_dir or Path(".")) / ".agents" / "skills" / "graphify" / "SKILL.md"
+            return (project_dir or Path(".")) / ".agents" / "skills" / "graph3d" / "SKILL.md"
         # Global Antigravity skill dir (all workspaces): ~/.gemini/config/skills/
-        return Path.home() / ".gemini" / "config" / "skills" / "graphify" / "SKILL.md"
+        return Path.home() / ".gemini" / "config" / "skills" / "graph3d" / "SKILL.md"
 
     cfg = _PLATFORM_CONFIG[platform_name]
     if project:
         return (project_dir or Path(".")) / cfg["skill_dst"]
 
     if platform_name in ("claude", "windows") and os.environ.get("CLAUDE_CONFIG_DIR"):
-        return Path(os.environ["CLAUDE_CONFIG_DIR"]) / "skills" / "graphify" / "SKILL.md"
+        return Path(os.environ["CLAUDE_CONFIG_DIR"]) / "skills" / "graph3d" / "SKILL.md"
     return Path.home() / cfg["skill_dst"]
 
 
@@ -107,7 +107,7 @@ def _copy_skill_file(platform_name: str, *, project: bool = False, project_dir: 
     skill_file = "skill.md" if platform_name == "gemini" else _PLATFORM_CONFIG[platform_name]["skill_file"]
     skill_src = Path(__file__).parent / skill_file
     if not skill_src.exists():
-        print(f"error: {skill_file} not found in package - reinstall graphify", file=sys.stderr)
+        print(f"error: {skill_file} not found in package - reinstall graph3d", file=sys.stderr)
         sys.exit(1)
 
     skill_dst = _platform_skill_destination(platform_name, project=project, project_dir=project_dir)
@@ -122,7 +122,7 @@ def _copy_skill_file(platform_name: str, *, project: bool = False, project_dir: 
         except OSError:
             pass
         raise
-    (skill_dst.parent / ".graphify_version").write_text(__version__, encoding="utf-8")
+    (skill_dst.parent / ".graph3d_version").write_text(__version__, encoding="utf-8")
     print(f"  skill installed  ->  {skill_dst}")
     return skill_dst
 
@@ -135,7 +135,7 @@ def _remove_skill_file(platform_name: str, *, project: bool = False, project_dir
         skill_dst.unlink()
         print(f"  skill removed    ->  {skill_dst}")
         removed = True
-    version_file = skill_dst.parent / ".graphify_version"
+    version_file = skill_dst.parent / ".graph3d_version"
     if version_file.exists():
         version_file.unlink()
         removed = True
@@ -162,12 +162,12 @@ def _remove_claude_skill_registration(project_dir: Path) -> None:
     if not claude_md.exists():
         return
     content = claude_md.read_text(encoding="utf-8")
-    if "# graphify" not in content:
+    if "# graph3d" not in content:
         return
-    cleaned = re.sub(r"\n*# graphify\n.*?(?=\n# |\Z)", "", content, flags=re.DOTALL).rstrip()
+    cleaned = re.sub(r"\n*# graph3d\n.*?(?=\n# |\Z)", "", content, flags=re.DOTALL).rstrip()
     if cleaned:
         claude_md.write_text(cleaned + "\n", encoding="utf-8")
-        print(f"  CLAUDE.md        ->  graphify skill registration removed from {claude_md}")
+        print(f"  CLAUDE.md        ->  graph3d skill registration removed from {claude_md}")
     else:
         claude_md.unlink()
         print(f"  CLAUDE.md        ->  deleted {claude_md}")
@@ -200,8 +200,8 @@ _SETTINGS_HOOK = {
                 "print(d.get('tool_input',d).get('command',''))\" 2>/dev/null || true); "
                 "case \"$CMD\" in "
                 r"*grep*|*rg\ *|*ripgrep*|*find\ *|*fd\ *|*ack\ *|*ag\ *) "
-                "  [ -f graphify-out/graph.json ] && "
-                r"""  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"graphify: knowledge graph at graphify-out/. For focused questions, run `graphify query \"<question>\"` (scoped subgraph, usually much smaller than GRAPH_REPORT.md) instead of grepping raw files. Read GRAPH_REPORT.md only for broad architecture context."}}' """
+                "  [ -f graph3d-out/graph.json ] && "
+                r"""  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"graph3d: knowledge graph at graph3d-out/. For focused questions, run `graph3d query \"<question>\"` (scoped subgraph, usually much smaller than GRAPH_REPORT.md) instead of grepping raw files. Read GRAPH_REPORT.md only for broad architecture context."}}' """
                 "  || true ;; "
                 "esac"
             ),
@@ -209,114 +209,114 @@ _SETTINGS_HOOK = {
     ],
 }
 
-def _skill_registration(skill_path: str = "~/.claude/skills/graphify/SKILL.md") -> str:
+def _skill_registration(skill_path: str = "~/.claude/skills/graph3d/SKILL.md") -> str:
     return (
-        "\n# graphify\n"
-        f"- **graphify** (`{skill_path}`) "
-        "- any input to knowledge graph. Trigger: `/graphify`\n"
-        "When the user types `/graphify`, invoke the Skill tool "
-        "with `skill: \"graphify\"` before doing anything else.\n"
+        "\n# graph3d\n"
+        f"- **graph3d** (`{skill_path}`) "
+        "- any input to knowledge graph. Trigger: `/graph3d`\n"
+        "When the user types `/graph3d`, invoke the Skill tool "
+        "with `skill: \"graph3d\"` before doing anything else.\n"
     )
 
 
 _PLATFORM_CONFIG: dict[str, dict] = {
     "claude": {
         "skill_file": "skill.md",
-        "skill_dst": Path(".claude") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".claude") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": True,
     },
     "codex": {
         "skill_file": "skill-codex.md",
-        "skill_dst": Path(".agents") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".agents") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "opencode": {
         "skill_file": "skill-opencode.md",
-        "skill_dst": Path(".config") / "opencode" / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".config") / "opencode" / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "aider": {
         "skill_file": "skill-aider.md",
-        "skill_dst": Path(".aider") / "graphify" / "SKILL.md",
+        "skill_dst": Path(".aider") / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "copilot": {
         "skill_file": "skill-copilot.md",
-        "skill_dst": Path(".copilot") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".copilot") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "claw": {
         "skill_file": "skill-claw.md",
-        "skill_dst": Path(".openclaw") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".openclaw") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "droid": {
         "skill_file": "skill-droid.md",
-        "skill_dst": Path(".factory") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".factory") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "trae": {
         "skill_file": "skill-trae.md",
-        "skill_dst": Path(".trae") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".trae") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "trae-cn": {
         "skill_file": "skill-trae.md",
-        "skill_dst": Path(".trae-cn") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".trae-cn") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "hermes": {
         "skill_file": "skill-claw.md",
-        "skill_dst": Path(".hermes") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".hermes") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "kiro": {
         "skill_file": "skill-kiro.md",
-        "skill_dst": Path(".kiro") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".kiro") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "pi": {
         "skill_file": "skill-pi.md",
-        "skill_dst": Path(".pi") / "agent" / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".pi") / "agent" / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "antigravity": {
         "skill_file": "skill.md",
-        "skill_dst": Path(".agents") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".agents") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "antigravity-windows": {
         "skill_file": "skill-windows.md",
-        "skill_dst": Path(".agents") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".agents") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "windows": {
         "skill_file": "skill-windows.md",
-        "skill_dst": Path(".claude") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".claude") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": True,
     },
     "kimi": {
         "skill_file": "skill.md",
-        "skill_dst": Path(".kimi") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".kimi") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "amp": {
         "skill_file": "skill-amp.md",
-        "skill_dst": Path(".amp") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".amp") / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
     "devin": {
         "skill_file": "skill-devin.md",
-        # User scope: ~/.config/devin/skills/graphify/SKILL.md
-        # Project scope: .devin/skills/graphify/SKILL.md (overridden in _platform_skill_destination)
-        "skill_dst": Path(".config") / "devin" / "skills" / "graphify" / "SKILL.md",
+        # User scope: ~/.config/devin/skills/graph3d/SKILL.md
+        # Project scope: .devin/skills/graph3d/SKILL.md (overridden in _platform_skill_destination)
+        "skill_dst": Path(".config") / "devin" / "skills" / "graph3d" / "SKILL.md",
         "claude_md": False,
     },
 }
 
 
 def _replace_or_append_section(content: str, marker: str, new_section: str) -> str:
-    """Idempotently update or append a graphify-owned section in shared files.
+    """Idempotently update or append a graph3d-owned section in shared files.
 
     If ``marker`` is not in ``content``, append ``new_section`` to the end
     (with a blank-line separator if there's existing content).
@@ -384,10 +384,10 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
     if cfg["claude_md"]:
         # Register in the matching Claude Code scope.
         claude_md = (project_dir / ".claude" / "CLAUDE.md") if project else Path.home() / ".claude" / "CLAUDE.md"
-        registration = _skill_registration(".claude/skills/graphify/SKILL.md" if project else "~/.claude/skills/graphify/SKILL.md")
+        registration = _skill_registration(".claude/skills/graph3d/SKILL.md" if project else "~/.claude/skills/graph3d/SKILL.md")
         if claude_md.exists():
             content = claude_md.read_text(encoding="utf-8")
-            if "graphify" in content:
+            if "graph3d" in content:
                 print(f"  CLAUDE.md        ->  already registered (no change)")
             else:
                 claude_md.write_text(content.rstrip() + registration, encoding="utf-8")
@@ -410,62 +410,62 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
     print()
     print("Done. Open your AI coding assistant and type:")
     print()
-    print("  /graphify .")
+    print("  /graph3d .")
     print()
 
 
 def _print_install_usage() -> None:
     platforms = ", ".join([*_PLATFORM_CONFIG, "gemini", "cursor"])
-    print("Usage: graphify install [--project] [--platform P|P]")
+    print("Usage: graph3d install [--project] [--platform P|P]")
     print(f"Platforms: {platforms}")
 
 
 _CLAUDE_MD_SECTION = """\
-## graphify
+## graph3d
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+This project has a knowledge graph at graph3d-out/ with god nodes, community structure, and cross-file relationships.
 
 Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- For codebase questions, first run `graph3d query "<question>"` when graph3d-out/graph.json exists. Use `graph3d path "<A>" "<B>"` for relationships and `graph3d explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graph3d-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graph3d-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graph3d update .` to keep the graph current (AST-only, no API cost).
 """
 
-_CLAUDE_MD_MARKER = "## graphify"
+_CLAUDE_MD_MARKER = "## graph3d"
 
 # AGENTS.md section for Codex, OpenCode, and OpenClaw.
 # All three platforms read AGENTS.md in the project root for persistent instructions.
 _AGENTS_MD_SECTION = """\
-## graphify
+## graph3d
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+This project has a knowledge graph at graph3d-out/ with god nodes, community structure, and cross-file relationships.
 
-When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.
+When the user types `/graph3d`, invoke the `skill` tool with `skill: "graph3d"` before doing anything else.
 
 Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- For codebase questions, first run `graph3d query "<question>"` when graph3d-out/graph.json exists. Use `graph3d path "<A>" "<B>"` for relationships and `graph3d explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- Dirty graph3d-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graph3d. Only skip graph3d if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
+- If graph3d-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graph3d-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graph3d update .` to keep the graph current (AST-only, no API cost).
 """
 
-_AGENTS_MD_MARKER = "## graphify"
+_AGENTS_MD_MARKER = "## graph3d"
 
 _GEMINI_MD_SECTION = """\
-## graphify
+## graph3d
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+This project has a knowledge graph at graph3d-out/ with god nodes, community structure, and cross-file relationships.
 
 Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- For codebase questions, first run `graph3d query "<question>"` when graph3d-out/graph.json exists. Use `graph3d path "<A>" "<B>"` for relationships and `graph3d explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graph3d-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graph3d-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graph3d update .` to keep the graph current (AST-only, no API cost).
 """
 
-_GEMINI_MD_MARKER = "## graphify"
+_GEMINI_MD_MARKER = "## graph3d"
 
 _GEMINI_HOOK = {
     "matcher": "read_file|list_directory",
@@ -475,9 +475,9 @@ _GEMINI_HOOK = {
             "command": (
                 'python -c "'
                 "import sys,pathlib,json;"
-                "e=pathlib.Path('graphify-out/graph.json').exists();"
+                "e=pathlib.Path('graph3d-out/graph.json').exists();"
                 "d={'decision':'allow'};"
-                "e and d.update({'additionalContext':'graphify: knowledge graph at graphify-out/. For focused questions, run `graphify query \"<question>\"` (scoped subgraph, usually much smaller than GRAPH_REPORT.md) instead of grepping raw files. Read GRAPH_REPORT.md only for broad architecture context.'});"
+                "e and d.update({'additionalContext':'graph3d: knowledge graph at graph3d-out/. For focused questions, run `graph3d query \"<question>\"` (scoped subgraph, usually much smaller than GRAPH_REPORT.md) instead of grepping raw files. Read GRAPH_REPORT.md only for broad architecture context.'});"
                 "sys.stdout.write(json.dumps(d))"
                 '"'
             ),
@@ -502,10 +502,10 @@ def gemini_install(project_dir: Path | None = None, *, project: bool = False) ->
         new_content = _GEMINI_MD_SECTION
 
     if target.exists() and new_content == target.read_text(encoding="utf-8"):
-        print(f"graphify already configured in {target.resolve()} (no change)")
+        print(f"graph3d already configured in {target.resolve()} (no change)")
     else:
         target.write_text(new_content, encoding="utf-8")
-        print(f"graphify section written to {target.resolve()}")
+        print(f"graph3d section written to {target.resolve()}")
 
     # Always re-install the Gemini hook so an older payload (e.g. pre-issue-#580
     # wording) is replaced on upgrade.
@@ -525,7 +525,7 @@ def _install_gemini_hook(project_dir: Path) -> None:
     except json.JSONDecodeError:
         settings = {}
     before_tool = settings.setdefault("hooks", {}).setdefault("BeforeTool", [])
-    settings["hooks"]["BeforeTool"] = [h for h in before_tool if "graphify" not in str(h)]
+    settings["hooks"]["BeforeTool"] = [h for h in before_tool if "graph3d" not in str(h)]
     settings["hooks"]["BeforeTool"].append(_GEMINI_HOOK)
     settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
     print("  .gemini/settings.json  ->  BeforeTool hook registered")
@@ -540,7 +540,7 @@ def _uninstall_gemini_hook(project_dir: Path) -> None:
     except json.JSONDecodeError:
         return
     before_tool = settings.get("hooks", {}).get("BeforeTool", [])
-    filtered = [h for h in before_tool if "graphify" not in str(h)]
+    filtered = [h for h in before_tool if "graph3d" not in str(h)]
     if len(filtered) == len(before_tool):
         return
     settings["hooks"]["BeforeTool"] = filtered
@@ -549,7 +549,7 @@ def _uninstall_gemini_hook(project_dir: Path) -> None:
 
 
 def gemini_uninstall(project_dir: Path | None = None, *, project: bool = False) -> None:
-    """Remove the graphify section from GEMINI.md, uninstall hook, and remove skill file."""
+    """Remove the graph3d section from GEMINI.md, uninstall hook, and remove skill file."""
     project_dir = project_dir or Path(".")
     _remove_skill_file("gemini", project=project, project_dir=project_dir)
 
@@ -559,49 +559,49 @@ def gemini_uninstall(project_dir: Path | None = None, *, project: bool = False) 
         return
     content = target.read_text(encoding="utf-8")
     if _GEMINI_MD_MARKER not in content:
-        print("graphify section not found in GEMINI.md - nothing to do")
+        print("graph3d section not found in GEMINI.md - nothing to do")
         return
-    cleaned = re.sub(r"\n*## graphify\n.*?(?=\n## |\Z)", "", content, flags=re.DOTALL).rstrip()
+    cleaned = re.sub(r"\n*## graph3d\n.*?(?=\n## |\Z)", "", content, flags=re.DOTALL).rstrip()
     if cleaned:
         target.write_text(cleaned + "\n", encoding="utf-8")
-        print(f"graphify section removed from {target.resolve()}")
+        print(f"graph3d section removed from {target.resolve()}")
     else:
         target.unlink()
         print(f"GEMINI.md was empty after removal - deleted {target.resolve()}")
     _uninstall_gemini_hook(project_dir)
 
 
-_VSCODE_INSTRUCTIONS_MARKER = "## graphify"
+_VSCODE_INSTRUCTIONS_MARKER = "## graph3d"
 _VSCODE_INSTRUCTIONS_SECTION = """\
-## graphify
+## graph3d
 
 For any question about this repo's architecture, structure, components, or how to add/modify/find
-code, your first action should be `graphify query "<question>"` when `graphify-out/graph.json`
-exists. Use `graphify path "<A>" "<B>"` for relationship questions and `graphify explain "<concept>"`
+code, your first action should be `graph3d query "<question>"` when `graph3d-out/graph.json`
+exists. Use `graph3d path "<A>" "<B>"` for relationship questions and `graph3d explain "<concept>"`
 for focused-concept questions. These return a scoped subgraph, usually much smaller than the full
 report or raw grep output.
 
 Triggers: "how do I…", "where is…", "what does … do", "add/modify a <component>",
 "explain the architecture", or anything that depends on how files or classes relate.
 
-If `graphify-out/wiki/index.md` exists, use it for broad navigation. Read `graphify-out/GRAPH_REPORT.md`
+If `graph3d-out/wiki/index.md` exists, use it for broad navigation. Read `graph3d-out/GRAPH_REPORT.md`
 only for broad architecture review or when query/path/explain do not surface enough context. Only read
 source files when (a) modifying/debugging specific code, (b) the graph lacks the needed detail, or
 (c) the graph is missing or stale.
 
-Type `/graphify` in Copilot Chat to build or update the graph.
+Type `/graph3d` in Copilot Chat to build or update the graph.
 """
 
 
 def vscode_install(project_dir: Path | None = None) -> None:
-    """Install graphify skill for VS Code Copilot Chat + write .github/copilot-instructions.md."""
+    """Install graph3d skill for VS Code Copilot Chat + write .github/copilot-instructions.md."""
     skill_src = Path(__file__).parent / "skill-vscode.md"
     if not skill_src.exists():
         skill_src = Path(__file__).parent / "skill-copilot.md"
-    skill_dst = Path.home() / ".copilot" / "skills" / "graphify" / "SKILL.md"
+    skill_dst = Path.home() / ".copilot" / "skills" / "graph3d" / "SKILL.md"
     skill_dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(skill_src, skill_dst)
-    (skill_dst.parent / ".graphify_version").write_text(__version__, encoding="utf-8")
+    (skill_dst.parent / ".graph3d_version").write_text(__version__, encoding="utf-8")
     print(f"  skill installed  ->  {skill_dst}")
 
     instructions = (project_dir or Path(".")) / ".github" / "copilot-instructions.md"
@@ -615,23 +615,23 @@ def vscode_install(project_dir: Path | None = None) -> None:
             print(f"  {instructions}  ->  already configured (no change)")
         else:
             instructions.write_text(new_content, encoding="utf-8")
-            print(f"  {instructions}  ->  graphify section {'updated' if _VSCODE_INSTRUCTIONS_MARKER in content else 'added'}")
+            print(f"  {instructions}  ->  graph3d section {'updated' if _VSCODE_INSTRUCTIONS_MARKER in content else 'added'}")
     else:
         instructions.write_text(_VSCODE_INSTRUCTIONS_SECTION, encoding="utf-8")
         print(f"  {instructions}  ->  created")
 
     print()
-    print("VS Code Copilot Chat configured. Type /graphify in the chat panel to build the graph.")
-    print("Note: for GitHub Copilot CLI (terminal), use: graphify copilot install")
+    print("VS Code Copilot Chat configured. Type /graph3d in the chat panel to build the graph.")
+    print("Note: for GitHub Copilot CLI (terminal), use: graph3d copilot install")
 
 
 def vscode_uninstall(project_dir: Path | None = None) -> None:
-    """Remove graphify VS Code Copilot Chat skill and .github/copilot-instructions.md section."""
-    skill_dst = Path.home() / ".copilot" / "skills" / "graphify" / "SKILL.md"
+    """Remove graph3d VS Code Copilot Chat skill and .github/copilot-instructions.md section."""
+    skill_dst = Path.home() / ".copilot" / "skills" / "graph3d" / "SKILL.md"
     if skill_dst.exists():
         skill_dst.unlink()
         print(f"  skill removed    ->  {skill_dst}")
-    version_file = skill_dst.parent / ".graphify_version"
+    version_file = skill_dst.parent / ".graph3d_version"
     if version_file.exists():
         version_file.unlink()
     for d in (skill_dst.parent, skill_dst.parent.parent, skill_dst.parent.parent.parent):
@@ -646,44 +646,44 @@ def vscode_uninstall(project_dir: Path | None = None) -> None:
     content = instructions.read_text(encoding="utf-8")
     if _VSCODE_INSTRUCTIONS_MARKER not in content:
         return
-    cleaned = re.sub(r"\n*## graphify\n.*?(?=\n## |\Z)", "", content, flags=re.DOTALL).rstrip()
+    cleaned = re.sub(r"\n*## graph3d\n.*?(?=\n## |\Z)", "", content, flags=re.DOTALL).rstrip()
     if cleaned:
         instructions.write_text(cleaned + "\n", encoding="utf-8")
-        print(f"  graphify section removed from {instructions}")
+        print(f"  graph3d section removed from {instructions}")
     else:
         instructions.unlink()
         print(f"  {instructions}  ->  deleted (was empty after removal)")
 
 
-_ANTIGRAVITY_RULES_PATH = Path(".agents") / "rules" / "graphify.md"
-_ANTIGRAVITY_WORKFLOW_PATH = Path(".agents") / "workflows" / "graphify.md"
+_ANTIGRAVITY_RULES_PATH = Path(".agents") / "rules" / "graph3d.md"
+_ANTIGRAVITY_WORKFLOW_PATH = Path(".agents") / "workflows" / "graph3d.md"
 
 _ANTIGRAVITY_RULES = """\
 ---
 trigger: always_on
-description: Consult the graphify knowledge graph at graphify-out/ for codebase and architecture questions.
+description: Consult the graph3d knowledge graph at graph3d-out/ for codebase and architecture questions.
 ---
 
-## graphify
+## graph3d
 
-This project has a graphify knowledge graph at graphify-out/.
+This project has a graph3d knowledge graph at graph3d-out/.
 
 Rules:
-- For codebase or architecture questions, when `graphify-out/graph.json` exists, first run `graphify query "<question>"` (CLI) or `query_graph` (MCP). Use `graphify path "<A>" "<B>"` / `shortest_path` for relationships and `graphify explain "<concept>"` / `get_node` for focused concepts. These return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output.
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+- For codebase or architecture questions, when `graph3d-out/graph.json` exists, first run `graph3d query "<question>"` (CLI) or `query_graph` (MCP). Use `graph3d path "<A>" "<B>"` / `shortest_path` for relationships and `graph3d explain "<concept>"` / `get_node` for focused concepts. These return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output.
+- If graph3d-out/wiki/index.md exists, navigate it instead of reading raw files
+- Read graph3d-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context
+- After modifying code files in this session, run `graph3d update .` to keep the graph current (AST-only, no API cost)
 """
 
 _ANTIGRAVITY_WORKFLOW = """\
 ---
-name: graphify
+name: graph3d
 description: Turn any folder of files into a navigable knowledge graph
 ---
 
-# Workflow: graphify
+# Workflow: graph3d
 
-Follow the graphify skill installed at ~/.gemini/config/skills/graphify/SKILL.md to run the full pipeline.
+Follow the graph3d skill installed at ~/.gemini/config/skills/graph3d/SKILL.md to run the full pipeline.
 
 If no path argument is given, use `.` (current directory).
 """
@@ -694,51 +694,51 @@ _KIRO_STEERING = """\
 inclusion: always
 ---
 
-graphify: A knowledge graph of this project lives in `graphify-out/`. \
-For codebase, architecture, or dependency questions, when `graphify-out/graph.json` exists, \
-first run `graphify query "<question>"` (or `graphify path "<A>" "<B>"` / `graphify explain "<concept>"`). \
+graph3d: A knowledge graph of this project lives in `graph3d-out/`. \
+For codebase, architecture, or dependency questions, when `graph3d-out/graph.json` exists, \
+first run `graph3d query "<question>"` (or `graph3d path "<A>" "<B>"` / `graph3d explain "<concept>"`). \
 These return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output. \
 Read `GRAPH_REPORT.md` only for broad architecture review or when those commands do not surface enough context.
 """
 
-_KIRO_STEERING_MARKER = "graphify: A knowledge graph of this project"
+_KIRO_STEERING_MARKER = "graph3d: A knowledge graph of this project"
 
 
 def _kiro_install(project_dir: Path) -> None:
-    """Write graphify skill + steering file for Kiro IDE/CLI."""
+    """Write graph3d skill + steering file for Kiro IDE/CLI."""
     project_dir = project_dir or Path(".")
 
-    # Skill file → .kiro/skills/graphify/SKILL.md
+    # Skill file → .kiro/skills/graph3d/SKILL.md
     skill_src = Path(__file__).parent / "skill-kiro.md"
-    skill_dst = project_dir / ".kiro" / "skills" / "graphify" / "SKILL.md"
+    skill_dst = project_dir / ".kiro" / "skills" / "graph3d" / "SKILL.md"
     skill_dst.parent.mkdir(parents=True, exist_ok=True)
     skill_dst.write_text(skill_src.read_text(encoding="utf-8"), encoding="utf-8")
-    print(f"  {skill_dst.relative_to(project_dir)}  ->  /graphify skill")
+    print(f"  {skill_dst.relative_to(project_dir)}  ->  /graph3d skill")
 
-    # Steering file → .kiro/steering/graphify.md (always-on)
+    # Steering file → .kiro/steering/graph3d.md (always-on)
     steering_dir = project_dir / ".kiro" / "steering"
     steering_dir.mkdir(parents=True, exist_ok=True)
-    steering_dst = steering_dir / "graphify.md"
+    steering_dst = steering_dir / "graph3d.md"
     if steering_dst.exists() and steering_dst.read_text(encoding="utf-8") == _KIRO_STEERING:
-        print(f"  .kiro/steering/graphify.md  ->  already configured (no change)")
+        print(f"  .kiro/steering/graph3d.md  ->  already configured (no change)")
     else:
-        # File is wholly graphify-owned. Overwrite on upgrade so older
+        # File is wholly graph3d-owned. Overwrite on upgrade so older
         # report-first wording does not silently linger (issue #580).
         action = "updated" if steering_dst.exists() else "written"
         steering_dst.write_text(_KIRO_STEERING, encoding="utf-8")
-        print(f"  .kiro/steering/graphify.md  ->  always-on steering {action}")
+        print(f"  .kiro/steering/graph3d.md  ->  always-on steering {action}")
 
     print()
     print("Kiro will now read the knowledge graph before every conversation.")
-    print("Use /graphify to build or update the graph.")
+    print("Use /graph3d to build or update the graph.")
 
 
 def _kiro_uninstall(project_dir: Path) -> None:
-    """Remove graphify skill + steering file for Kiro."""
+    """Remove graph3d skill + steering file for Kiro."""
     project_dir = project_dir or Path(".")
     removed = []
 
-    skill_dst = project_dir / ".kiro" / "skills" / "graphify" / "SKILL.md"
+    skill_dst = project_dir / ".kiro" / "skills" / "graph3d" / "SKILL.md"
     if skill_dst.exists():
         skill_dst.unlink()
         removed.append(str(skill_dst.relative_to(project_dir)))
@@ -748,7 +748,7 @@ def _kiro_uninstall(project_dir: Path) -> None:
         except OSError:
             pass
 
-    steering_dst = project_dir / ".kiro" / "steering" / "graphify.md"
+    steering_dst = project_dir / ".kiro" / "steering" / "graph3d.md"
     if steering_dst.exists():
         steering_dst.unlink()
         removed.append(str(steering_dst.relative_to(project_dir)))
@@ -757,8 +757,8 @@ def _kiro_uninstall(project_dir: Path) -> None:
 
 
 def _antigravity_install(project_dir: Path) -> None:
-    """Install graphify for Google Antigravity: skill + .agents/rules + .agents/workflows."""
-    # 1. Copy skill file to ~/.gemini/config/skills/graphify/SKILL.md (global)
+    """Install graph3d for Google Antigravity: skill + .agents/rules + .agents/workflows."""
+    # 1. Copy skill file to ~/.gemini/config/skills/graph3d/SKILL.md (global)
     install(platform="antigravity")
 
     # 1.5. Inject YAML frontmatter for native Antigravity tool discovery
@@ -766,70 +766,70 @@ def _antigravity_install(project_dir: Path) -> None:
     if skill_dst.exists():
         content = skill_dst.read_text(encoding="utf-8")
         if not content.startswith("---\n"):
-            frontmatter = "---\nname: graphify-manager\ndescription: Rebuild the code graph or perform manual CLI queries when MCP server is offline.\n---\n\n"
+            frontmatter = "---\nname: graph3d-manager\ndescription: Rebuild the code graph or perform manual CLI queries when MCP server is offline.\n---\n\n"
             skill_dst.write_text(frontmatter + content, encoding="utf-8")
 
-    # 2. Write .agents/rules/graphify.md
+    # 2. Write .agents/rules/graph3d.md
     rules_path = project_dir / _ANTIGRAVITY_RULES_PATH
     rules_path.parent.mkdir(parents=True, exist_ok=True)
     if rules_path.exists():
         existing = rules_path.read_text(encoding="utf-8")
         if _ANTIGRAVITY_RULES.strip() != existing.strip():
             rules_path.write_text(_ANTIGRAVITY_RULES, encoding="utf-8")
-            print(f"graphify rule updated at {rules_path.resolve()}")
+            print(f"graph3d rule updated at {rules_path.resolve()}")
         else:
-            print(f"graphify rule already configured at {rules_path.resolve()} (no change)")
+            print(f"graph3d rule already configured at {rules_path.resolve()} (no change)")
     else:
         rules_path.write_text(_ANTIGRAVITY_RULES, encoding="utf-8")
-        print(f"graphify rule written to {rules_path.resolve()}")
+        print(f"graph3d rule written to {rules_path.resolve()}")
 
-    # 3. Write .agents/workflows/graphify.md
+    # 3. Write .agents/workflows/graph3d.md
     wf_path = project_dir / _ANTIGRAVITY_WORKFLOW_PATH
     wf_path.parent.mkdir(parents=True, exist_ok=True)
     if wf_path.exists():
         existing = wf_path.read_text(encoding="utf-8")
         if _ANTIGRAVITY_WORKFLOW.strip() != existing.strip():
             wf_path.write_text(_ANTIGRAVITY_WORKFLOW, encoding="utf-8")
-            print(f"graphify workflow updated at {wf_path.resolve()}")
+            print(f"graph3d workflow updated at {wf_path.resolve()}")
         else:
-            print(f"graphify workflow already configured at {wf_path.resolve()} (no change)")
+            print(f"graph3d workflow already configured at {wf_path.resolve()} (no change)")
     else:
         wf_path.write_text(_ANTIGRAVITY_WORKFLOW, encoding="utf-8")
-        print(f"graphify workflow written to {wf_path.resolve()}")
+        print(f"graph3d workflow written to {wf_path.resolve()}")
 
     print()
     print("Antigravity will now check the knowledge graph before answering")
-    print("codebase questions. Run /graphify first to build the graph.")
+    print("codebase questions. Run /graph3d first to build the graph.")
     print()
     print("To enable full MCP architecture navigation, add this to ~/.gemini/antigravity/mcp_config.json:")
-    print('  "graphify": {')
+    print('  "graph3d": {')
     print('    "command": "uv",')
-    print('    "args": ["run", "--with", "graphifyy", "--with", "mcp", "-m", "graphify.serve", "${workspace.path}/graphify-out/graph.json"]')
+    print('    "args": ["run", "--with", "graph3d", "--with", "mcp", "-m", "graph3d.serve", "${workspace.path}/graph3d-out/graph.json"]')
     print('  }')
 
 
 def _antigravity_uninstall(project_dir: Path, *, project: bool = False) -> None:
-    """Remove graphify Antigravity rules, workflow, and skill files."""
+    """Remove graph3d Antigravity rules, workflow, and skill files."""
     # Remove rules file
     rules_path = project_dir / _ANTIGRAVITY_RULES_PATH
     if rules_path.exists():
         rules_path.unlink()
-        print(f"graphify rule removed from {rules_path.resolve()}")
+        print(f"graph3d rule removed from {rules_path.resolve()}")
     else:
-        print("No graphify Antigravity rule found - nothing to do")
+        print("No graph3d Antigravity rule found - nothing to do")
 
     # Remove workflow file
     wf_path = project_dir / _ANTIGRAVITY_WORKFLOW_PATH
     if wf_path.exists():
         wf_path.unlink()
-        print(f"graphify workflow removed from {wf_path.resolve()}")
+        print(f"graph3d workflow removed from {wf_path.resolve()}")
 
     # Remove skill file
     skill_dst = _platform_skill_destination("antigravity", project=project, project_dir=project_dir)
     if skill_dst.exists():
         skill_dst.unlink()
-        print(f"graphify skill removed from {skill_dst}")
-    version_file = skill_dst.parent / ".graphify_version"
+        print(f"graph3d skill removed from {skill_dst}")
+    version_file = skill_dst.parent / ".graph3d_version"
     if version_file.exists():
         version_file.unlink()
     for d in (skill_dst.parent, skill_dst.parent.parent, skill_dst.parent.parent.parent):
@@ -839,67 +839,67 @@ def _antigravity_uninstall(project_dir: Path, *, project: bool = False) -> None:
             break
 
 
-_CURSOR_RULE_PATH = Path(".cursor") / "rules" / "graphify.mdc"
+_CURSOR_RULE_PATH = Path(".cursor") / "rules" / "graph3d.mdc"
 _CURSOR_RULE = """\
 ---
-description: graphify knowledge graph context
+description: graph3d knowledge graph context
 alwaysApply: true
 ---
 
-This project has a graphify knowledge graph at graphify-out/.
+This project has a graph3d knowledge graph at graph3d-out/.
 
-- For codebase or architecture questions, when `graphify-out/graph.json` exists, first run `graphify query "<question>"` (or `graphify path "<A>" "<B>"` / `graphify explain "<concept>"`). These return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output.
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+- For codebase or architecture questions, when `graph3d-out/graph.json` exists, first run `graph3d query "<question>"` (or `graph3d path "<A>" "<B>"` / `graph3d explain "<concept>"`). These return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output.
+- If graph3d-out/wiki/index.md exists, navigate it instead of reading raw files
+- Read graph3d-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context
+- After modifying code files in this session, run `graph3d update .` to keep the graph current (AST-only, no API cost)
 """
 
 
 def _cursor_install(project_dir: Path) -> None:
-    """Write .cursor/rules/graphify.mdc with alwaysApply: true."""
+    """Write .cursor/rules/graph3d.mdc with alwaysApply: true."""
     rule_path = (project_dir or Path(".")) / _CURSOR_RULE_PATH
     rule_path.parent.mkdir(parents=True, exist_ok=True)
     if rule_path.exists() and rule_path.read_text(encoding="utf-8") == _CURSOR_RULE:
-        print(f"graphify rule at {rule_path} already configured (no change)")
+        print(f"graph3d rule at {rule_path} already configured (no change)")
         return
-    # File is wholly graphify-owned. Overwrite on upgrade so older
+    # File is wholly graph3d-owned. Overwrite on upgrade so older
     # report-first wording does not silently linger (issue #580).
     action = "updated" if rule_path.exists() else "written"
     rule_path.write_text(_CURSOR_RULE, encoding="utf-8")
-    print(f"graphify rule {action} at {rule_path.resolve()}")
+    print(f"graph3d rule {action} at {rule_path.resolve()}")
     print()
     print("Cursor will now always include the knowledge graph context.")
-    print("Run /graphify . first to build the graph if you haven't already.")
+    print("Run /graph3d . first to build the graph if you haven't already.")
 
 
 def _cursor_uninstall(project_dir: Path) -> None:
-    """Remove .cursor/rules/graphify.mdc."""
+    """Remove .cursor/rules/graph3d.mdc."""
     rule_path = (project_dir or Path(".")) / _CURSOR_RULE_PATH
     if not rule_path.exists():
-        print("No graphify Cursor rule found - nothing to do")
+        print("No graph3d Cursor rule found - nothing to do")
         return
     rule_path.unlink()
-    print(f"graphify Cursor rule removed from {rule_path.resolve()}")
+    print(f"graph3d Cursor rule removed from {rule_path.resolve()}")
 
 
-# Devin CLI — .windsurf/rules/graphify.md (always-on context)
+# Devin CLI — .windsurf/rules/graph3d.md (always-on context)
 # Devin reads .windsurf/rules/*.md files the same way Windsurf IDE does.
-_DEVIN_RULES_PATH = Path(".windsurf") / "rules" / "graphify.md"
+_DEVIN_RULES_PATH = Path(".windsurf") / "rules" / "graph3d.md"
 _DEVIN_RULES = """\
-## graphify
+## graph3d
 
-This project has a graphify knowledge graph at graphify-out/.
+This project has a graph3d knowledge graph at graph3d-out/.
 
 Rules:
-- For codebase or architecture questions, when `graphify-out/graph.json` exists, first run `graphify query "<question>"` (or `graphify path "<A>" "<B>"` / `graphify explain "<concept>"`). These return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output.
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+- For codebase or architecture questions, when `graph3d-out/graph.json` exists, first run `graph3d query "<question>"` (or `graph3d path "<A>" "<B>"` / `graph3d explain "<concept>"`). These return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output.
+- If graph3d-out/wiki/index.md exists, navigate it instead of reading raw files
+- Read graph3d-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context
+- After modifying code files in this session, run `graph3d update .` to keep the graph current (AST-only, no API cost)
 """
 
 
 def _devin_rules_install(project_dir: Path) -> None:
-    """Write .windsurf/rules/graphify.md for always-on Devin context."""
+    """Write .windsurf/rules/graph3d.md for always-on Devin context."""
     rules_path = (project_dir or Path(".")) / _DEVIN_RULES_PATH
     rules_path.parent.mkdir(parents=True, exist_ok=True)
     if rules_path.exists() and rules_path.read_text(encoding="utf-8") == _DEVIN_RULES:
@@ -911,7 +911,7 @@ def _devin_rules_install(project_dir: Path) -> None:
 
 
 def _devin_rules_uninstall(project_dir: Path) -> None:
-    """Remove .windsurf/rules/graphify.md."""
+    """Remove .windsurf/rules/graph3d.md."""
     rules_path = (project_dir or Path(".")) / _DEVIN_RULES_PATH
     if not rules_path.exists():
         return
@@ -922,22 +922,22 @@ def _devin_rules_uninstall(project_dir: Path) -> None:
 # OpenCode tool.execute.before plugin — fires before every tool call.
 # Injects a graph reminder into bash command output when graph.json exists.
 _OPENCODE_PLUGIN_JS = """\
-// graphify OpenCode plugin
+// graph3d OpenCode plugin
 // Injects a knowledge graph reminder before bash tool calls when the graph exists.
 import { existsSync } from "fs";
 import { join } from "path";
 
-export const GraphifyPlugin = async ({ directory }) => {
+export const Graph3dPlugin = async ({ directory }) => {
   let reminded = false;
 
   return {
     "tool.execute.before": async (input, output) => {
       if (reminded) return;
-      if (!existsSync(join(directory, "graphify-out", "graph.json"))) return;
+      if (!existsSync(join(directory, "graph3d-out", "graph.json"))) return;
 
       if (input.tool === "bash") {
         output.args.command =
-          'echo "[graphify] knowledge graph at graphify-out/. For focused questions, run \\`graphify query \\"<question>\\"\\` (scoped subgraph, usually much smaller than GRAPH_REPORT.md) instead of grepping raw files. Read GRAPH_REPORT.md only for broad architecture context." && ' +
+          'echo "[graph3d] knowledge graph at graph3d-out/. For focused questions, run \\`graph3d query \\"<question>\\"\\` (scoped subgraph, usually much smaller than GRAPH_REPORT.md) instead of grepping raw files. Read GRAPH_REPORT.md only for broad architecture context." && ' +
           output.args.command;
         reminded = true;
       }
@@ -946,12 +946,12 @@ export const GraphifyPlugin = async ({ directory }) => {
 };
 """
 
-_OPENCODE_PLUGIN_PATH = Path(".opencode") / "plugins" / "graphify.js"
+_OPENCODE_PLUGIN_PATH = Path(".opencode") / "plugins" / "graph3d.js"
 _OPENCODE_CONFIG_PATH = Path(".opencode") / "opencode.json"
 
 
 def _install_opencode_plugin(project_dir: Path) -> None:
-    """Write graphify.js plugin and register it in opencode.json."""
+    """Write graph3d.js plugin and register it in opencode.json."""
     plugin_file = project_dir / _OPENCODE_PLUGIN_PATH
     plugin_file.parent.mkdir(parents=True, exist_ok=True)
     plugin_file.write_text(_OPENCODE_PLUGIN_JS, encoding="utf-8")
@@ -977,7 +977,7 @@ def _install_opencode_plugin(project_dir: Path) -> None:
 
 
 def _uninstall_opencode_plugin(project_dir: Path) -> None:
-    """Remove graphify.js plugin and deregister from opencode.json."""
+    """Remove graph3d.js plugin and deregister from opencode.json."""
     plugin_file = project_dir / _OPENCODE_PLUGIN_PATH
     if plugin_file.exists():
         plugin_file.unlink()
@@ -1008,11 +1008,11 @@ _CODEX_HOOK = {
                 "hooks": [
                     {
                         "type": "command",
-                        # Use the graphify CLI itself so the hook is shell-agnostic:
+                        # Use the graph3d CLI itself so the hook is shell-agnostic:
                         # no [ -f ] bash syntax, no python3 vs python Conda issue,
                         # no JSON escaping inside PowerShell strings. Works on
                         # Windows (PowerShell/cmd.exe), macOS, and Linux.
-                        "command": "graphify hook-check",
+                        "command": "graph3d hook-check",
                     }
                 ],
             }
@@ -1021,28 +1021,28 @@ _CODEX_HOOK = {
 }
 
 
-def _resolve_graphify_exe() -> str:
-    """Return the absolute path to the graphify executable.
+def _resolve_graph3d_exe() -> str:
+    """Return the absolute path to the graph3d executable.
 
-    Falls back to bare 'graphify' if resolution fails. Using an absolute path
+    Falls back to bare 'graph3d' if resolution fails. Using an absolute path
     ensures the hook works in environments where the venv Scripts/ directory is
     not on PATH (e.g. VS Code Codex extension on Windows).
     """
     import shutil
-    found = shutil.which("graphify")
+    found = shutil.which("graph3d")
     if found:
         return found
     # Derive from sys.executable: same Scripts/ (Windows) or bin/ (Unix) dir
     scripts_dir = Path(sys.executable).parent
-    for name in ("graphify.exe", "graphify"):
+    for name in ("graph3d.exe", "graph3d"):
         candidate = scripts_dir / name
         if candidate.exists():
             return str(candidate)
-    return "graphify"
+    return "graph3d"
 
 
 def _install_codex_hook(project_dir: Path) -> None:
-    """Add graphify PreToolUse hook to .codex/hooks.json."""
+    """Add graph3d PreToolUse hook to .codex/hooks.json."""
     hooks_path = project_dir / ".codex" / "hooks.json"
     hooks_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1054,27 +1054,27 @@ def _install_codex_hook(project_dir: Path) -> None:
     else:
         existing = {}
 
-    graphify_exe = _resolve_graphify_exe()
+    graph3d_exe = _resolve_graph3d_exe()
     hook_entry = {
         "hooks": {
             "PreToolUse": [
                 {
                     "matcher": "Bash",
-                    "hooks": [{"type": "command", "command": f"{graphify_exe} hook-check"}],
+                    "hooks": [{"type": "command", "command": f"{graph3d_exe} hook-check"}],
                 }
             ]
         }
     }
 
     pre_tool = existing.setdefault("hooks", {}).setdefault("PreToolUse", [])
-    existing["hooks"]["PreToolUse"] = [h for h in pre_tool if "graphify" not in str(h)]
+    existing["hooks"]["PreToolUse"] = [h for h in pre_tool if "graph3d" not in str(h)]
     existing["hooks"]["PreToolUse"].extend(hook_entry["hooks"]["PreToolUse"])
     hooks_path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
-    print(f"  .codex/hooks.json  ->  PreToolUse hook registered ({graphify_exe} hook-check)")
+    print(f"  .codex/hooks.json  ->  PreToolUse hook registered ({graph3d_exe} hook-check)")
 
 
 def _uninstall_codex_hook(project_dir: Path) -> None:
-    """Remove graphify PreToolUse hook from .codex/hooks.json."""
+    """Remove graph3d PreToolUse hook from .codex/hooks.json."""
     hooks_path = project_dir / ".codex" / "hooks.json"
     if not hooks_path.exists():
         return
@@ -1083,14 +1083,14 @@ def _uninstall_codex_hook(project_dir: Path) -> None:
     except json.JSONDecodeError:
         return
     pre_tool = existing.get("hooks", {}).get("PreToolUse", [])
-    filtered = [h for h in pre_tool if "graphify" not in str(h)]
+    filtered = [h for h in pre_tool if "graph3d" not in str(h)]
     existing["hooks"]["PreToolUse"] = filtered
     hooks_path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
     print(f"  .codex/hooks.json  ->  PreToolUse hook removed")
 
 
 def _agents_install(project_dir: Path, platform: str) -> None:
-    """Write the graphify section to the local AGENTS.md (Codex/OpenCode/OpenClaw)."""
+    """Write the graph3d section to the local AGENTS.md (Codex/OpenCode/OpenClaw)."""
     target = (project_dir or Path(".")) / "AGENTS.md"
 
     if target.exists():
@@ -1102,10 +1102,10 @@ def _agents_install(project_dir: Path, platform: str) -> None:
         new_content = _AGENTS_MD_SECTION
 
     if target.exists() and new_content == target.read_text(encoding="utf-8"):
-        print(f"graphify already configured in {target.resolve()} (no change)")
+        print(f"graph3d already configured in {target.resolve()} (no change)")
     else:
         target.write_text(new_content, encoding="utf-8")
-        print(f"graphify section written to {target.resolve()}")
+        print(f"graph3d section written to {target.resolve()}")
 
     if platform == "codex":
         _install_codex_hook(project_dir or Path("."))
@@ -1192,7 +1192,7 @@ def _project_uninstall(platform_name: str, project_dir: Path | None = None) -> N
 def _project_uninstall_all(project_dir: Path | None = None) -> None:
     """Remove project-scoped install files without touching user-scope installs."""
     project_dir = project_dir or Path(".")
-    print("Uninstalling project-scoped graphify files...\n")
+    print("Uninstalling project-scoped graph3d files...\n")
     for platform_name in _PLATFORM_CONFIG:
         _project_uninstall(platform_name, project_dir)
     for platform_name in ("gemini", "cursor"):
@@ -1201,7 +1201,7 @@ def _project_uninstall_all(project_dir: Path | None = None) -> None:
 
 
 def _agents_uninstall(project_dir: Path, platform: str = "") -> None:
-    """Remove the graphify section from the local AGENTS.md."""
+    """Remove the graph3d section from the local AGENTS.md."""
     target = (project_dir or Path(".")) / "AGENTS.md"
 
     if not target.exists():
@@ -1210,18 +1210,18 @@ def _agents_uninstall(project_dir: Path, platform: str = "") -> None:
 
     content = target.read_text(encoding="utf-8")
     if _AGENTS_MD_MARKER not in content:
-        print("graphify section not found in AGENTS.md - nothing to do")
+        print("graph3d section not found in AGENTS.md - nothing to do")
         return
 
     cleaned = re.sub(
-        r"\n*## graphify\n.*?(?=\n## |\Z)",
+        r"\n*## graph3d\n.*?(?=\n## |\Z)",
         "",
         content,
         flags=re.DOTALL,
     ).rstrip()
     if cleaned:
         target.write_text(cleaned + "\n", encoding="utf-8")
-        print(f"graphify section removed from {target.resolve()}")
+        print(f"graph3d section removed from {target.resolve()}")
     else:
         target.unlink()
         print(f"AGENTS.md was empty after removal - deleted {target.resolve()}")
@@ -1231,7 +1231,7 @@ def _agents_uninstall(project_dir: Path, platform: str = "") -> None:
 
 
 def claude_install(project_dir: Path | None = None) -> None:
-    """Write the graphify section to the local CLAUDE.md."""
+    """Write the graph3d section to the local CLAUDE.md."""
     target = (project_dir or Path(".")) / "CLAUDE.md"
 
     if target.exists():
@@ -1243,10 +1243,10 @@ def claude_install(project_dir: Path | None = None) -> None:
         new_content = _CLAUDE_MD_SECTION
 
     if target.exists() and new_content == target.read_text(encoding="utf-8"):
-        print(f"graphify already configured in {target.resolve()} (no change)")
+        print(f"graph3d already configured in {target.resolve()} (no change)")
     else:
         target.write_text(new_content, encoding="utf-8")
-        print(f"graphify section written to {target.resolve()}")
+        print(f"graph3d section written to {target.resolve()}")
 
     # Always re-install the Claude Code PreToolUse hook so an old hook
     # payload (e.g. pre-issue-#580 wording) is replaced on upgrade.
@@ -1258,7 +1258,7 @@ def claude_install(project_dir: Path | None = None) -> None:
 
 
 def _install_claude_hook(project_dir: Path) -> None:
-    """Add graphify PreToolUse hook to .claude/settings.json."""
+    """Add graph3d PreToolUse hook to .claude/settings.json."""
     settings_path = project_dir / ".claude" / "settings.json"
     settings_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1273,14 +1273,14 @@ def _install_claude_hook(project_dir: Path) -> None:
     hooks = settings.setdefault("hooks", {})
     pre_tool = hooks.setdefault("PreToolUse", [])
 
-    hooks["PreToolUse"] = [h for h in pre_tool if not (h.get("matcher") in ("Glob|Grep", "Bash") and "graphify" in str(h))]
+    hooks["PreToolUse"] = [h for h in pre_tool if not (h.get("matcher") in ("Glob|Grep", "Bash") and "graph3d" in str(h))]
     hooks["PreToolUse"].append(_SETTINGS_HOOK)
     settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
     print(f"  .claude/settings.json  ->  PreToolUse hook registered")
 
 
 def _uninstall_claude_hook(project_dir: Path) -> None:
-    """Remove graphify PreToolUse hook from .claude/settings.json."""
+    """Remove graph3d PreToolUse hook from .claude/settings.json."""
     settings_path = project_dir / ".claude" / "settings.json"
     if not settings_path.exists():
         return
@@ -1289,7 +1289,7 @@ def _uninstall_claude_hook(project_dir: Path) -> None:
     except json.JSONDecodeError:
         return
     pre_tool = settings.get("hooks", {}).get("PreToolUse", [])
-    filtered = [h for h in pre_tool if not (h.get("matcher") in ("Glob|Grep", "Bash") and "graphify" in str(h))]
+    filtered = [h for h in pre_tool if not (h.get("matcher") in ("Glob|Grep", "Bash") and "graph3d" in str(h))]
     if len(filtered) == len(pre_tool):
         return
     settings["hooks"]["PreToolUse"] = filtered
@@ -1298,9 +1298,9 @@ def _uninstall_claude_hook(project_dir: Path) -> None:
 
 
 def uninstall_all(project_dir: Path | None = None, purge: bool = False) -> None:
-    """Remove graphify from every platform detected in the current project."""
+    """Remove graph3d from every platform detected in the current project."""
     pd = project_dir or Path(".")
-    print("Uninstalling graphify from all detected platforms...\n")
+    print("Uninstalling graph3d from all detected platforms...\n")
 
     # Skill-file / config-section uninstallers
     claude_uninstall(pd)
@@ -1316,7 +1316,7 @@ def uninstall_all(project_dir: Path | None = None, purge: bool = False) -> None:
 
     # Git hook
     try:
-        from graphify.hooks import uninstall as hook_uninstall
+        from graph3d.hooks import uninstall as hook_uninstall
         result = hook_uninstall(pd)
         if result:
             print(result)
@@ -1325,18 +1325,18 @@ def uninstall_all(project_dir: Path | None = None, purge: bool = False) -> None:
 
     if purge:
         import shutil as _shutil
-        out = pd / "graphify-out"
+        out = pd / "graph3d-out"
         if out.exists():
             _shutil.rmtree(out)
-            print(f"\n  graphify-out/  ->  deleted (--purge)")
+            print(f"\n  graph3d-out/  ->  deleted (--purge)")
         else:
-            print("\n  graphify-out/  ->  not found (nothing to purge)")
+            print("\n  graph3d-out/  ->  not found (nothing to purge)")
 
-    print("\nDone. Run 'pip uninstall graphifyy' to remove the package itself.")
+    print("\nDone. Run 'pip uninstall graph3d' to remove the package itself.")
 
 
 def claude_uninstall(project_dir: Path | None = None) -> None:
-    """Remove the graphify section from the local CLAUDE.md."""
+    """Remove the graph3d section from the local CLAUDE.md."""
     target = (project_dir or Path(".")) / "CLAUDE.md"
 
     if not target.exists():
@@ -1345,19 +1345,19 @@ def claude_uninstall(project_dir: Path | None = None) -> None:
 
     content = target.read_text(encoding="utf-8")
     if _CLAUDE_MD_MARKER not in content:
-        print("graphify section not found in CLAUDE.md - nothing to do")
+        print("graph3d section not found in CLAUDE.md - nothing to do")
         return
 
-    # Remove the ## graphify section: from the marker to the next ## heading or EOF
+    # Remove the ## graph3d section: from the marker to the next ## heading or EOF
     cleaned = re.sub(
-        r"\n*## graphify\n.*?(?=\n## |\Z)",
+        r"\n*## graph3d\n.*?(?=\n## |\Z)",
         "",
         content,
         flags=re.DOTALL,
     ).rstrip()
     if cleaned:
         target.write_text(cleaned + "\n", encoding="utf-8")
-        print(f"graphify section removed from {target.resolve()}")
+        print(f"graph3d section removed from {target.resolve()}")
     else:
         target.unlink()
         print(f"CLAUDE.md was empty after removal - deleted {target.resolve()}")
@@ -1368,7 +1368,7 @@ def claude_uninstall(project_dir: Path | None = None) -> None:
 def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None) -> Path:
     """Clone a GitHub repo to a local cache dir and return the path.
 
-    Clones into ~/.graphify/repos/<owner>/<repo> by default so repeated
+    Clones into ~/.graph3d/repos/<owner>/<repo> by default so repeated
     runs on the same URL reuse the existing clone (git pull instead of clone).
     """
     import subprocess as _sp
@@ -1392,7 +1392,7 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
     if out_dir:
         dest = out_dir
     else:
-        dest = Path.home() / ".graphify" / "repos" / owner / repo
+        dest = Path.home() / ".graph3d" / "repos" / owner / repo
 
     if branch and branch.startswith("-"):
         print(f"error: invalid branch name: {branch!r}", file=sys.stderr)
@@ -1439,23 +1439,23 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) >= 2 and sys.argv[1] in ("-v", "--version", "version"):
-        print(f"graphify {__version__}")
+        print(f"graph3d {__version__}")
         return
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "-?"):
-        print("Usage: graphify <command>")
+        print("Usage: graph3d <command>")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi|devin)")
-        print("  uninstall               remove graphify from all detected platforms in one shot")
-        print("    --purge                 also delete graphify-out/ directory")
+        print("  uninstall               remove graph3d from all detected platforms in one shot")
+        print("    --purge                 also delete graph3d-out/ directory")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
-        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("    --graph <path>          path to graph.json (default graph3d-out/graph.json)")
         print("  explain \"X\"             plain-language explanation of a node and its neighbors")
-        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("    --graph <path>          path to graph.json (default graph3d-out/graph.json)")
         print("  diagnose multigraph    report same-endpoint edge collapse risk in graph.json")
         print("    --graph <path>          path to graph/extraction JSON")
-        print("                            (default graphify-out/graph.json)")
+        print("                            (default graph3d-out/graph.json)")
         print("    --json                  emit machine-readable JSON")
         print("    --max-examples N        max same-endpoint examples to print (default 5)")
         print("    --directed              force directed post-build simulation")
@@ -1463,12 +1463,12 @@ def main() -> None:
         print("                            (default follows JSON directed flag;")
         print("                             raw extraction with no flag defaults directed)")
         print("    --extract-path PATH     extractor source for suppression scan")
-        print("  clone <github-url>      clone a GitHub repo locally and print its path for /graphify")
+        print("  clone <github-url>      clone a GitHub repo locally and print its path for /graph3d")
         print("  merge-driver <base> <current> <other>  git merge driver: union-merge two graph.json files (set up via hook install)")
         print("  merge-graphs <g1> <g2>  merge two or more graph.json files into one cross-repo graph")
-        print("    --out <path>            output path (default: graphify-out/merged-graph.json)")
+        print("    --out <path>            output path (default: graph3d-out/merged-graph.json)")
         print("    --branch <branch>       checkout a specific branch (default: repo default)")
-        print("    --out <dir>             clone to a custom directory (default: ~/.graphify/repos/<owner>/<repo>)")
+        print("    --out <dir>             clone to a custom directory (default: ~/.graph3d/repos/<owner>/<repo>)")
         print("  add <url>               fetch a URL and save it to ./raw, then update the graph")
         print("    --author \"Name\"         tag the author of the content")
         print("    --contributor \"Name\"    tag who added it to the corpus")
@@ -1476,30 +1476,30 @@ def main() -> None:
         print("  watch <path>            watch a folder and rebuild the graph on code changes")
         print("  update <path>           re-extract code files and update the graph (no LLM needed)")
         print("    --force                 overwrite graph.json even if the rebuild has fewer nodes")
-        print("                            (also: GRAPHIFY_FORCE=1 env var; use after refactors that delete code)")
+        print("                            (also: GRAPH3D_FORCE=1 env var; use after refactors that delete code)")
         print("    --no-cluster            skip clustering, write raw extraction only")
         print("  cluster-only <path>     rerun clustering on an existing graph.json and regenerate report")
         print("    --no-viz                skip graph.html generation (useful for >5000 node graphs / CI)")
-        print("    --graph <path>          path to graph.json (default <path>/graphify-out/graph.json)")
+        print("    --graph <path>          path to graph.json (default <path>/graph3d-out/graph.json)")
         print("  query \"<question>\"       BFS traversal of graph.json for a question")
         print("    --dfs                   use depth-first instead of breadth-first")
         print("    --context C             explicit edge-context filter (repeatable)")
         print("    --budget N              cap output at N tokens (default 2000)")
-        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("    --graph <path>          path to graph.json (default graph3d-out/graph.json)")
         print("  affected \"X\"             reverse traversal to find nodes impacted by X")
         print("    --relation R            edge relation to traverse in reverse (repeatable)")
         print("    --depth N               reverse traversal depth (default 2)")
-        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
-        print("  save-result             save a Q&A result to graphify-out/memory/ for graph feedback loop")
+        print("    --graph <path>          path to graph.json (default graph3d-out/graph.json)")
+        print("  save-result             save a Q&A result to graph3d-out/memory/ for graph feedback loop")
         print("    --question Q            the question asked")
         print("    --answer A              the answer to save")
         print("    --type T                query type: query|path_query|explain (default: query)")
         print("    --nodes N1 N2 ...       source node labels cited in the answer")
-        print("    --memory-dir DIR        memory directory (default: graphify-out/memory)")
+        print("    --memory-dir DIR        memory directory (default: graph3d-out/memory)")
         print("  check-update <path>     check needs_update flag and notify if semantic re-extraction is pending (cron-safe)")
         print("  tree                    emit a D3 v7 collapsible-tree HTML for graph.json")
-        print("    --graph PATH            path to graph.json (default graphify-out/graph.json)")
-        print("    --output HTML           output path (default graphify-out/GRAPH_TREE.html)")
+        print("    --graph PATH            path to graph.json (default graph3d-out/graph.json)")
+        print("    --output HTML           output path (default graph3d-out/GRAPH_TREE.html)")
         print("    --root PATH             filesystem root for the hierarchy")
         print("    --max-children N        cap children per node (default 200)")
         print("    --top-k-edges N         per-symbol outbound edges in inspector (default 12)")
@@ -1512,12 +1512,12 @@ def main() -> None:
         print("    --token-budget N        per-chunk token cap for semantic extraction (default: 60000)")
         print("    --max-concurrency N     parallel semantic chunks in flight (default: 4; set 1 for local LLMs)")
         print("    --api-timeout S         per-request timeout in seconds for the LLM client (default: 600)")
-        print("    --out DIR               output dir (default: <path>); writes <DIR>/graphify-out/")
+        print("    --out DIR               output dir (default: <path>); writes <DIR>/graph3d-out/")
         print("    --google-workspace      export .gdoc/.gsheet/.gslides shortcuts via gws before extraction")
         print("    --no-cluster            skip clustering, write raw extraction only")
         print("    --global                also merge the resulting graph into the global graph")
         print("    --as <tag>              repo tag for --global (default: target directory name)")
-        print("  global add <graph.json>  add/update a project graph in the global graph (~/.graphify/global-graph.json)")
+        print("  global add <graph.json>  add/update a project graph in the global graph (~/.graph3d/global-graph.json)")
         print("    --as <tag>               repo tag (default: parent directory name)")
         print("  global remove <tag>      remove a repo's nodes from the global graph")
         print("  global list              list repos in the global graph")
@@ -1529,38 +1529,38 @@ def main() -> None:
         print("  hook status             check if git hooks are installed")
         print("  gemini install          write GEMINI.md section + BeforeTool hook (Gemini CLI)")
         print("  gemini uninstall        remove GEMINI.md section + BeforeTool hook")
-        print("  cursor install          write .cursor/rules/graphify.mdc (Cursor)")
-        print("  cursor uninstall        remove .cursor/rules/graphify.mdc")
-        print("  claude install          write graphify section to CLAUDE.md + PreToolUse hook (Claude Code)")
-        print("  claude uninstall        remove graphify section from CLAUDE.md + PreToolUse hook")
-        print("  codex install           write graphify section to AGENTS.md (Codex)")
-        print("  codex uninstall         remove graphify section from AGENTS.md")
-        print("  opencode install        write graphify section to AGENTS.md + tool.execute.before plugin (OpenCode)")
-        print("  opencode uninstall      remove graphify section from AGENTS.md + plugin")
-        print("  aider install           write graphify section to AGENTS.md (Aider)")
-        print("  aider uninstall         remove graphify section from AGENTS.md")
-        print("  copilot install         copy graphify skill to ~/.copilot/skills (GitHub Copilot CLI)")
-        print("  copilot uninstall       remove graphify skill from ~/.copilot/skills")
+        print("  cursor install          write .cursor/rules/graph3d.mdc (Cursor)")
+        print("  cursor uninstall        remove .cursor/rules/graph3d.mdc")
+        print("  claude install          write graph3d section to CLAUDE.md + PreToolUse hook (Claude Code)")
+        print("  claude uninstall        remove graph3d section from CLAUDE.md + PreToolUse hook")
+        print("  codex install           write graph3d section to AGENTS.md (Codex)")
+        print("  codex uninstall         remove graph3d section from AGENTS.md")
+        print("  opencode install        write graph3d section to AGENTS.md + tool.execute.before plugin (OpenCode)")
+        print("  opencode uninstall      remove graph3d section from AGENTS.md + plugin")
+        print("  aider install           write graph3d section to AGENTS.md (Aider)")
+        print("  aider uninstall         remove graph3d section from AGENTS.md")
+        print("  copilot install         copy graph3d skill to ~/.copilot/skills (GitHub Copilot CLI)")
+        print("  copilot uninstall       remove graph3d skill from ~/.copilot/skills")
         print("  vscode install          configure VS Code Copilot Chat (skill + .github/copilot-instructions.md)")
         print("  vscode uninstall        remove VS Code Copilot Chat configuration")
-        print("  claw install            write graphify section to AGENTS.md (OpenClaw)")
-        print("  claw uninstall          remove graphify section from AGENTS.md")
-        print("  droid install           write graphify section to AGENTS.md (Factory Droid)")
-        print("  droid uninstall        remove graphify section from AGENTS.md")
-        print("  trae install            write graphify section to AGENTS.md (Trae)")
-        print("  trae uninstall         remove graphify section from AGENTS.md")
-        print("  trae-cn install         write graphify section to AGENTS.md (Trae CN)")
-        print("  trae-cn uninstall      remove graphify section from AGENTS.md")
+        print("  claw install            write graph3d section to AGENTS.md (OpenClaw)")
+        print("  claw uninstall          remove graph3d section from AGENTS.md")
+        print("  droid install           write graph3d section to AGENTS.md (Factory Droid)")
+        print("  droid uninstall        remove graph3d section from AGENTS.md")
+        print("  trae install            write graph3d section to AGENTS.md (Trae)")
+        print("  trae uninstall         remove graph3d section from AGENTS.md")
+        print("  trae-cn install         write graph3d section to AGENTS.md (Trae CN)")
+        print("  trae-cn uninstall      remove graph3d section from AGENTS.md")
         print("  antigravity install     write .agents/rules + .agents/workflows + skill (Google Antigravity)")
         print("  antigravity uninstall   remove .agents/rules, .agents/workflows, and skill")
-        print("  hermes install          write skill to ~/.hermes/skills/graphify/ (Hermes)")
-        print("  hermes uninstall        remove skill from ~/.hermes/skills/graphify/")
-        print("  kiro install            write skill to .kiro/skills/graphify/ + steering file (Kiro IDE/CLI)")
+        print("  hermes install          write skill to ~/.hermes/skills/graph3d/ (Hermes)")
+        print("  hermes uninstall        remove skill from ~/.hermes/skills/graph3d/")
+        print("  kiro install            write skill to .kiro/skills/graph3d/ + steering file (Kiro IDE/CLI)")
         print("  kiro uninstall          remove skill + steering file")
-        print("  pi install              write skill to ~/.pi/agent/skills/graphify/ (Pi coding agent)")
-        print("  pi uninstall            remove skill from ~/.pi/agent/skills/graphify/")
-        print("  devin install           write skill to ~/.config/devin/skills/graphify/ (Devin CLI)")
-        print("  devin uninstall         remove skill from ~/.config/devin/skills/graphify/")
+        print("  pi install              write skill to ~/.pi/agent/skills/graph3d/ (Pi coding agent)")
+        print("  pi uninstall            remove skill from ~/.pi/agent/skills/graph3d/")
+        print("  devin install           write skill to ~/.config/devin/skills/graph3d/ (Devin CLI)")
+        print("  devin uninstall         remove skill from ~/.config/devin/skills/graph3d/")
         print()
         return
 
@@ -1573,7 +1573,7 @@ def main() -> None:
     # "install"/"uninstall" which have their own per-subcommand help handlers.
     _FREE_TEXT_CMDS = {"query", "explain", "path", "save-result", "install", "uninstall"}
     if cmd not in _FREE_TEXT_CMDS and any(a in {"-h", "--help", "-?"} for a in sys.argv[2:]):
-        print(f"Run 'graphify --help' for full usage.")
+        print(f"Run 'graph3d --help' for full usage.")
         return
 
     if cmd == "install":
@@ -1667,7 +1667,7 @@ def main() -> None:
             else:
                 claude_uninstall()
         else:
-            print("Usage: graphify claude [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d claude [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "gemini":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1676,7 +1676,7 @@ def main() -> None:
         elif subcmd == "uninstall":
             gemini_uninstall(project=("--project" in sys.argv[3:]))
         else:
-            print("Usage: graphify gemini [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d gemini [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "cursor":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1685,7 +1685,7 @@ def main() -> None:
         elif subcmd == "uninstall":
             _cursor_uninstall(Path("."))
         else:
-            print("Usage: graphify cursor [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d cursor [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "vscode":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1694,7 +1694,7 @@ def main() -> None:
         elif subcmd == "uninstall":
             vscode_uninstall()
         else:
-            print("Usage: graphify vscode [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d vscode [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "copilot":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1710,7 +1710,7 @@ def main() -> None:
                 removed = _remove_skill_file("copilot")
                 print("skill removed" if removed else "nothing to remove")
         else:
-            print("Usage: graphify copilot [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d copilot [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "kiro":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1719,7 +1719,7 @@ def main() -> None:
         elif subcmd == "uninstall":
             _kiro_uninstall(Path("."))
         else:
-            print("Usage: graphify kiro [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d kiro [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "devin":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1735,7 +1735,7 @@ def main() -> None:
                 removed = _remove_skill_file("devin")
                 print("skill removed" if removed else "nothing to remove")
         else:
-            print("Usage: graphify devin [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d devin [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "pi":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1750,7 +1750,7 @@ def main() -> None:
             else:
                 _remove_skill_file("pi")
         else:
-            print("Usage: graphify pi [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d pi [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd in ("aider", "amp", "codex", "opencode", "claw", "droid", "trae", "trae-cn", "hermes"):
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1767,7 +1767,7 @@ def main() -> None:
                 if cmd == "codex":
                     _uninstall_codex_hook(Path("."))
         else:
-            print(f"Usage: graphify {cmd} [install|uninstall]", file=sys.stderr)
+            print(f"Usage: graph3d {cmd} [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "antigravity":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1782,10 +1782,10 @@ def main() -> None:
             else:
                 _antigravity_uninstall(Path("."))
         else:
-            print("Usage: graphify antigravity [install|uninstall]", file=sys.stderr)
+            print("Usage: graph3d antigravity [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "provider":
-        from graphify.llm import _custom_providers_path, BACKENDS
+        from graph3d.llm import _custom_providers_path, BACKENDS
         import json as _json
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         global_path = _custom_providers_path(global_=True)
@@ -1807,7 +1807,7 @@ def main() -> None:
         elif subcmd == "show":
             name = sys.argv[3] if len(sys.argv) > 3 else ""
             if not name:
-                print("Usage: graphify provider show <name>", file=sys.stderr)
+                print("Usage: graph3d provider show <name>", file=sys.stderr)
                 sys.exit(1)
             existing = {}
             if global_path.is_file():
@@ -1824,7 +1824,7 @@ def main() -> None:
             args = sys.argv[3:]
             name = args[0] if args and not args[0].startswith("-") else ""
             if not name:
-                print("Usage: graphify provider add <name> --base-url URL --default-model MODEL --env-key KEY", file=sys.stderr)
+                print("Usage: graph3d provider add <name> --base-url URL --default-model MODEL --env-key KEY", file=sys.stderr)
                 sys.exit(1)
             if name in BACKENDS:
                 print(f"Error: '{name}' is a built-in provider and cannot be overridden.", file=sys.stderr)
@@ -1873,12 +1873,12 @@ def main() -> None:
                 "temperature": 0,
             }
             global_path.write_text(_json.dumps(existing, indent=2) + "\n", encoding="utf-8")
-            print(f"Provider '{name}' added. Use with: graphify extract . --backend {name}")
+            print(f"Provider '{name}' added. Use with: graph3d extract . --backend {name}")
 
         elif subcmd == "remove":
             name = sys.argv[3] if len(sys.argv) > 3 else ""
             if not name:
-                print("Usage: graphify provider remove <name>", file=sys.stderr)
+                print("Usage: graph3d provider remove <name>", file=sys.stderr)
                 sys.exit(1)
             existing = {}
             if global_path.is_file():
@@ -1894,14 +1894,14 @@ def main() -> None:
             print(f"Provider '{name}' removed.")
 
         else:
-            print("Usage: graphify provider [add|list|show|remove]", file=sys.stderr)
+            print("Usage: graph3d provider [add|list|show|remove]", file=sys.stderr)
             if subcmd:
                 sys.exit(1)
     elif cmd == "prs":
-        from graphify.prs import cmd_prs
+        from graph3d.prs import cmd_prs
         cmd_prs(sys.argv[2:])
     elif cmd == "hook":
-        from graphify.hooks import install as hook_install, uninstall as hook_uninstall, status as hook_status
+        from graph3d.hooks import install as hook_install, uninstall as hook_uninstall, status as hook_status
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         if subcmd == "install":
             print(hook_install(Path(".")))
@@ -1910,14 +1910,14 @@ def main() -> None:
         elif subcmd == "status":
             print(hook_status(Path(".")))
         else:
-            print("Usage: graphify hook [install|uninstall|status]", file=sys.stderr)
+            print("Usage: graph3d hook [install|uninstall|status]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "query":
         if len(sys.argv) < 3:
-            print("Usage: graphify query \"<question>\" [--dfs] [--context C] [--budget N] [--graph path]", file=sys.stderr)
+            print("Usage: graph3d query \"<question>\" [--dfs] [--context C] [--budget N] [--graph path]", file=sys.stderr)
             sys.exit(1)
-        from graphify.serve import _query_graph_text
-        from graphify.security import sanitize_label
+        from graph3d.serve import _query_graph_text
+        from graph3d.security import sanitize_label
         from networkx.readwrite import json_graph
         question = sys.argv[2]
         use_dfs = "--dfs" in sys.argv
@@ -1984,11 +1984,11 @@ def main() -> None:
         )
     elif cmd == "affected":
         if len(sys.argv) < 3:
-            print("Usage: graphify affected \"<node-or-label>\" [--relation R] [--depth N] [--graph path]", file=sys.stderr)
+            print("Usage: graph3d affected \"<node-or-label>\" [--relation R] [--depth N] [--graph path]", file=sys.stderr)
             sys.exit(1)
-        from graphify.affected import DEFAULT_AFFECTED_RELATIONS, format_affected, load_graph
+        from graph3d.affected import DEFAULT_AFFECTED_RELATIONS, format_affected, load_graph
         query = sys.argv[2]
-        graph_path = "graphify-out/graph.json"
+        graph_path = "graph3d-out/graph.json"
         depth = 2
         relations: list[str] = []
         args = sys.argv[3:]
@@ -2043,16 +2043,16 @@ def main() -> None:
             )
         )
     elif cmd == "save-result":
-        # graphify save-result --question Q --answer A --type T [--nodes N1 N2 ...]
+        # graph3d save-result --question Q --answer A --type T [--nodes N1 N2 ...]
         import argparse as _ap
-        p = _ap.ArgumentParser(prog="graphify save-result")
+        p = _ap.ArgumentParser(prog="graph3d save-result")
         p.add_argument("--question", required=True)
         p.add_argument("--answer", required=True)
         p.add_argument("--type", dest="query_type", default="query")
         p.add_argument("--nodes", nargs="*", default=[])
-        p.add_argument("--memory-dir", default="graphify-out/memory")
+        p.add_argument("--memory-dir", default="graph3d-out/memory")
         opts = p.parse_args(sys.argv[2:])
-        from graphify.ingest import save_query_result as _sqr
+        from graph3d.ingest import save_query_result as _sqr
         out = _sqr(
             question=opts.question,
             answer=opts.answer,
@@ -2063,9 +2063,9 @@ def main() -> None:
         print(f"Saved to {out}")
     elif cmd == "path":
         if len(sys.argv) < 4:
-            print("Usage: graphify path \"<source>\" \"<target>\" [--graph path]", file=sys.stderr)
+            print("Usage: graph3d path \"<source>\" \"<target>\" [--graph path]", file=sys.stderr)
             sys.exit(1)
-        from graphify.serve import _score_nodes
+        from graph3d.serve import _score_nodes
         from networkx.readwrite import json_graph
         import networkx as _nx
         source_label = sys.argv[2]
@@ -2124,7 +2124,7 @@ def main() -> None:
             sys.exit(0)
         hops = len(path_nodes) - 1
         segments = []
-        from graphify.build import edge_data
+        from graph3d.build import edge_data
         for i in range(len(path_nodes) - 1):
             u, v = path_nodes[i], path_nodes[i + 1]
             # Check which direction the stored edge points.
@@ -2147,9 +2147,9 @@ def main() -> None:
 
     elif cmd == "explain":
         if len(sys.argv) < 3:
-            print("Usage: graphify explain \"<node>\" [--graph path]", file=sys.stderr)
+            print("Usage: graph3d explain \"<node>\" [--graph path]", file=sys.stderr)
             sys.exit(1)
-        from graphify.serve import _find_node
+        from graph3d.serve import _find_node
         from networkx.readwrite import json_graph
         label = sys.argv[2]
         graph_path = _default_graph_path()
@@ -2183,7 +2183,7 @@ def main() -> None:
         print(f"  Type:      {d.get('file_type', '')}")
         print(f"  Community: {d.get('community', '')}")
         print(f"  Degree:    {G.degree(nid)}")
-        from graphify.build import edge_data
+        from graph3d.build import edge_data
         connections: list[tuple[str, str, dict]] = []  # (direction, neighbor_id, edge_data)
         for nb in G.successors(nid):
             connections.append(("out", nb, edge_data(G, nid, nb)))
@@ -2204,7 +2204,7 @@ def main() -> None:
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         if subcmd != "multigraph":
             print(
-                "Usage: graphify diagnose multigraph "
+                "Usage: graph3d diagnose multigraph "
                 "[--graph path] [--json] [--max-examples N] "
                 "[--directed] [--undirected] [--extract-path path]",
                 file=sys.stderr,
@@ -2271,7 +2271,7 @@ def main() -> None:
                 sys.exit(1)
             i += 1
 
-        from graphify.diagnostics import (
+        from graph3d.diagnostics import (
             diagnose_file,
             format_diagnostic_json,
             format_diagnostic_report,
@@ -2296,9 +2296,9 @@ def main() -> None:
 
     elif cmd == "add":
         if len(sys.argv) < 3:
-            print("Usage: graphify add <url> [--author Name] [--contributor Name] [--dir ./raw]", file=sys.stderr)
+            print("Usage: graph3d add <url> [--author Name] [--contributor Name] [--dir ./raw]", file=sys.stderr)
             sys.exit(1)
-        from graphify.ingest import ingest as _ingest
+        from graph3d.ingest import ingest as _ingest
         url = sys.argv[2]
         author: str | None = None
         contributor: str | None = None
@@ -2317,7 +2317,7 @@ def main() -> None:
         try:
             saved = _ingest(url, target_dir, author=author, contributor=contributor)
             print(f"Saved to {saved}")
-            print("Run /graphify --update in your AI assistant to update the graph.")
+            print("Run /graph3d --update in your AI assistant to update the graph.")
         except Exception as exc:
             print(f"error: {exc}", file=sys.stderr)
             sys.exit(1)
@@ -2327,7 +2327,7 @@ def main() -> None:
         if not watch_path.exists():
             print(f"error: path not found: {watch_path}", file=sys.stderr)
             sys.exit(1)
-        from graphify.watch import watch as _watch
+        from graph3d.watch import watch as _watch
         try:
             _watch(watch_path)
         except ImportError as exc:
@@ -2368,16 +2368,16 @@ def main() -> None:
                 i_arg += 1
         if watch_path is None:
             watch_path = Path(".")
-        graph_json = graph_override if graph_override is not None else watch_path / "graphify-out" / "graph.json"
+        graph_json = graph_override if graph_override is not None else watch_path / "graph3d-out" / "graph.json"
         if not graph_json.exists():
-            print(f"error: no graph found at {graph_json} - run /graphify first", file=sys.stderr)
+            print(f"error: no graph found at {graph_json} - run /graph3d first", file=sys.stderr)
             sys.exit(1)
         from networkx.readwrite import json_graph as _jg
-        from graphify.build import build_from_json
-        from graphify.cluster import cluster, score_all, remap_communities_to_previous
-        from graphify.analyze import god_nodes, surprising_connections, suggest_questions
-        from graphify.report import generate
-        from graphify.export import to_json, to_html
+        from graph3d.build import build_from_json
+        from graph3d.cluster import cluster, score_all, remap_communities_to_previous
+        from graph3d.analyze import god_nodes, surprising_connections, suggest_questions
+        from graph3d.report import generate
+        from graph3d.export import to_json, to_html
         print("Loading existing graph...")
         _enforce_graph_size_cap_or_exit(graph_json)
         _raw = json.loads(graph_json.read_text(encoding="utf-8"))
@@ -2387,7 +2387,7 @@ def main() -> None:
         print("Re-clustering...")
         communities = cluster(G, resolution=co_resolution, exclude_hubs_percentile=co_exclude_hubs)
         # Mirror the watch/update path (#822): map new cids to prior ones by
-        # node-overlap so the existing .graphify_labels.json keeps attaching
+        # node-overlap so the existing .graph3d_labels.json keeps attaching
         # to the same conceptual community after re-clustering. Without this,
         # labels follow raw cid index and become misaligned whenever the
         # graph has changed between labeling and cluster-only (#1027).
@@ -2401,9 +2401,9 @@ def main() -> None:
         cohesion = score_all(G, communities)
         gods = god_nodes(G)
         surprises = surprising_connections(G, communities)
-        out = watch_path / "graphify-out"
+        out = watch_path / "graph3d-out"
         out.mkdir(parents=True, exist_ok=True)
-        labels_path = out / ".graphify_labels.json"
+        labels_path = out / ".graph3d_labels.json"
         if labels_path.exists():
             try:
                 labels = {int(k): v for k, v in json.loads(labels_path.read_text(encoding="utf-8")).items()}
@@ -2413,14 +2413,14 @@ def main() -> None:
             labels = {cid: f"Community {cid}" for cid in communities}
         questions = suggest_questions(G, communities, labels)
         tokens = {"input": 0, "output": 0}
-        from graphify.export import _git_head as _gh
+        from graph3d.export import _git_head as _gh
         _commit = _gh()
         report = generate(G, communities, cohesion, labels, gods, surprises,
                           {"warning": "cluster-only mode — file stats not available"},
                           tokens, str(watch_path), suggested_questions=questions,
                           min_community_size=min_community_size, built_at_commit=_commit)
         (out / "GRAPH_REPORT.md").write_text(report, encoding="utf-8")
-        from graphify.export import backup_if_protected as _backup
+        from graph3d.export import backup_if_protected as _backup
         _backup(out)
         to_json(G, communities, str(out / "graph.json"))
         labels_path.write_text(json.dumps({str(k): v for k, v in labels.items()}, ensure_ascii=False), encoding="utf-8")
@@ -2445,7 +2445,7 @@ def main() -> None:
                 print(f"Done - {len(communities)} communities. GRAPH_REPORT.md and graph.json updated.")
 
     elif cmd == "update":
-        force = os.environ.get("GRAPHIFY_FORCE", "").lower() in ("1", "true", "yes")
+        force = os.environ.get("GRAPH3D_FORCE", "").lower() in ("1", "true", "yes")
         no_cluster = False
         args = sys.argv[2:]
         watch_arg: str | None = None
@@ -2468,7 +2468,7 @@ def main() -> None:
             watch_path = Path(watch_arg)
         else:
             # Try to recover the scan root saved by the last full build
-            saved = Path(_GRAPHIFY_OUT) / ".graphify_root"
+            saved = Path(_GRAPH3D_OUT) / ".graph3d_root"
             if saved.exists():
                 watch_path = Path(saved.read_text(encoding="utf-8").strip())
             else:
@@ -2476,20 +2476,20 @@ def main() -> None:
         if not watch_path.exists():
             print(f"error: path not found: {watch_path}", file=sys.stderr)
             sys.exit(1)
-        from graphify.watch import _rebuild_code
+        from graph3d.watch import _rebuild_code
         print(f"Re-extracting code files in {watch_path} (no LLM needed)...")
         # Interactive CLI: block on the per-repo lock rather than skip, so the
-        # user sees their explicit `graphify update` complete instead of
+        # user sees their explicit `graph3d update` complete instead of
         # exiting silently when a hook-driven rebuild happens to be running.
         ok = _rebuild_code(watch_path, force=force, no_cluster=no_cluster, block_on_lock=True)
         if ok:
-            print("Code graph updated. For doc/paper/image changes run /graphify --update in your AI assistant.")
+            print("Code graph updated. For doc/paper/image changes run /graph3d --update in your AI assistant.")
             if not (
                 os.environ.get("GEMINI_API_KEY")
                 or os.environ.get("GOOGLE_API_KEY")
                 or os.environ.get("MOONSHOT_API_KEY")
                 or os.environ.get("DEEPSEEK_API_KEY")
-                or os.environ.get("GRAPHIFY_NO_TIPS")
+                or os.environ.get("GRAPH3D_NO_TIPS")
             ):
                 print("Tip: set GEMINI_API_KEY or GOOGLE_API_KEY to use Gemini for semantic extraction.")
         else:
@@ -2503,9 +2503,9 @@ def main() -> None:
         sys.exit(0)
     elif cmd == "check-update":
         if len(sys.argv) < 3:
-            print("Usage: graphify check-update <path>", file=sys.stderr)
+            print("Usage: graph3d check-update <path>", file=sys.stderr)
             sys.exit(1)
-        from graphify.watch import check_update
+        from graph3d.watch import check_update
         check_update(Path(sys.argv[2]).resolve())
         sys.exit(0)
     elif cmd == "tree":
@@ -2515,8 +2515,8 @@ def main() -> None:
         # depth-based palette, click-to-toggle subtree, hover inspector
         # showing top-K outbound edges per symbol.
         from typing import Optional as _Opt
-        from graphify.tree_html import write_tree_html, DEFAULT_MAX_CHILDREN
-        graph_path = Path(_GRAPHIFY_OUT) / "graph.json"
+        from graph3d.tree_html import write_tree_html, DEFAULT_MAX_CHILDREN
+        graph_path = Path(_GRAPH3D_OUT) / "graph.json"
         output_path: "_Opt[Path]" = None
         root: "_Opt[str]" = None
         max_children = DEFAULT_MAX_CHILDREN
@@ -2539,9 +2539,9 @@ def main() -> None:
             elif a == "--label" and i_arg + 1 < len(args):
                 project_label = args[i_arg + 1]; i_arg += 2
             elif a in ("-h", "--help"):
-                print("Usage: graphify tree [--graph PATH] [--output HTML]")
-                print("  --graph PATH         path to graph.json (default graphify-out/graph.json)")
-                print("  --output HTML        output path (default graphify-out/GRAPH_TREE.html)")
+                print("Usage: graph3d tree [--graph PATH] [--output HTML]")
+                print("  --graph PATH         path to graph.json (default graph3d-out/graph.json)")
+                print("  --output HTML        output path (default graph3d-out/GRAPH_TREE.html)")
                 print("  --root PATH          filesystem root (default: longest common dir of all source_files)")
                 print("  --max-children N     cap visible children per node (default 200)")
                 print("  --top-k-edges N      pre-compute top-K outbound edges per symbol (default 12)")
@@ -2570,9 +2570,9 @@ def main() -> None:
         # the union of current+other nodes/edges back to current. Exits 1 on
         # corrupt input so git surfaces the conflict instead of silently
         # accepting a poisoned merge (see F-005).
-        # Usage: graphify merge-driver %O %A %B  (set in .git/config merge driver)
+        # Usage: graph3d merge-driver %O %A %B  (set in .git/config merge driver)
         if len(sys.argv) < 5:
-            print("Usage: graphify merge-driver <base> <current> <other>", file=sys.stderr)
+            print("Usage: graph3d merge-driver <base> <current> <other>", file=sys.stderr)
             sys.exit(1)
         _base_path, _current_path, _other_path = sys.argv[2], sys.argv[3], sys.argv[4]
         # Hard caps so a malicious or corrupted graph.json cannot exhaust memory
@@ -2602,12 +2602,12 @@ def main() -> None:
             G_cur, _ = _load_graph(_current_path)
             G_oth, _ = _load_graph(_other_path)
         except Exception as exc:
-            print(f"[graphify merge-driver] error loading graphs: {exc}", file=sys.stderr)
+            print(f"[graph3d merge-driver] error loading graphs: {exc}", file=sys.stderr)
             sys.exit(1)  # surface the conflict so git doesn't accept a corrupt merge
         merged = _nx.compose(G_cur, G_oth)
         if merged.number_of_nodes() > _MERGE_MAX_NODES:
             print(
-                f"[graphify merge-driver] merged graph has {merged.number_of_nodes()} nodes, "
+                f"[graph3d merge-driver] merged graph has {merged.number_of_nodes()} nodes, "
                 f"exceeds {_MERGE_MAX_NODES}-node cap; aborting merge.",
                 file=sys.stderr,
             )
@@ -2620,10 +2620,10 @@ def main() -> None:
         sys.exit(0)
 
     elif cmd == "merge-graphs":
-        # graphify merge-graphs graph1.json graph2.json ... --out merged.json
+        # graph3d merge-graphs graph1.json graph2.json ... --out merged.json
         args = sys.argv[2:]
         graph_paths: list[Path] = []
-        out_path = Path(_GRAPHIFY_OUT) / "merged-graph.json"
+        out_path = Path(_GRAPH3D_OUT) / "merged-graph.json"
         i = 0
         while i < len(args):
             if args[i] == "--out" and i + 1 < len(args):
@@ -2631,11 +2631,11 @@ def main() -> None:
             else:
                 graph_paths.append(Path(args[i])); i += 1
         if len(graph_paths) < 2:
-            print("Usage: graphify merge-graphs <graph1.json> <graph2.json> [...] [--out merged.json]", file=sys.stderr)
+            print("Usage: graph3d merge-graphs <graph1.json> <graph2.json> [...] [--out merged.json]", file=sys.stderr)
             sys.exit(1)
         import networkx as _nx
         from networkx.readwrite import json_graph as _jg
-        from graphify.build import prefix_graph_for_global as _prefix
+        from graph3d.build import prefix_graph_for_global as _prefix
         graphs = []
         for gp in graph_paths:
             if not gp.exists():
@@ -2643,7 +2643,7 @@ def main() -> None:
                 sys.exit(1)
             _enforce_graph_size_cap_or_exit(gp)
             data = json.loads(gp.read_text(encoding="utf-8"))
-            # Normalize edges/links key before loading — graphify writes "links"
+            # Normalize edges/links key before loading — graph3d writes "links"
             # via node_link_data but older runs may have used "edges" (#738).
             if "links" not in data and "edges" in data:
                 data = dict(data, links=data["edges"])
@@ -2654,7 +2654,7 @@ def main() -> None:
             graphs.append(G)
         merged = _nx.Graph()
         for G, gp in zip(graphs, graph_paths):
-            repo_tag = gp.parent.parent.name  # graphify-out/../ → repo dir name
+            repo_tag = gp.parent.parent.name  # graph3d-out/../ → repo dir name
             prefixed = _prefix(G, repo_tag)
             merged = _nx.compose(merged, prefixed)
         try:
@@ -2668,7 +2668,7 @@ def main() -> None:
 
     elif cmd == "clone":
         if len(sys.argv) < 3:
-            print("Usage: graphify clone <github-url> [--branch <branch>] [--out <dir>]", file=sys.stderr)
+            print("Usage: graph3d clone <github-url> [--branch <branch>] [--out <dir>]", file=sys.stderr)
             sys.exit(1)
         url = sys.argv[2]
         branch: str | None = None
@@ -2688,7 +2688,7 @@ def main() -> None:
     elif cmd == "export":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         if subcmd not in ("html", "callflow-html", "obsidian", "wiki", "svg", "graphml", "neo4j"):
-            print("Usage: graphify export <format>", file=sys.stderr)
+            print("Usage: graph3d export <format>", file=sys.stderr)
             print("  html      [--graph PATH] [--labels PATH] [--node-limit N] [--no-viz]", file=sys.stderr)
             print("  callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH] [--report PATH] [--sections PATH] [--output HTML]", file=sys.stderr)
             print("            [--lang auto|zh-CN|en] [--max-sections N] [--diagram-scale N]", file=sys.stderr)
@@ -2702,11 +2702,11 @@ def main() -> None:
 
         # Parse shared args
         args = sys.argv[3:]
-        graph_path = Path(_GRAPHIFY_OUT) / "graph.json"
+        graph_path = Path(_GRAPH3D_OUT) / "graph.json"
         graph_path_explicit = False
-        labels_path = Path(_GRAPHIFY_OUT) / ".graphify_labels.json"
+        labels_path = Path(_GRAPH3D_OUT) / ".graph3d_labels.json"
         labels_path_explicit = False
-        report_path = Path(_GRAPHIFY_OUT) / "GRAPH_REPORT.md"
+        report_path = Path(_GRAPH3D_OUT) / "GRAPH_REPORT.md"
         report_path_explicit = False
         sections_path: Path | None = None
         callflow_output: Path | None = None
@@ -2715,10 +2715,10 @@ def main() -> None:
         callflow_diagram_scale = 1.0
         callflow_max_diagram_nodes = 18
         callflow_max_diagram_edges = 24
-        analysis_path = Path(_GRAPHIFY_OUT) / ".graphify_analysis.json"
+        analysis_path = Path(_GRAPH3D_OUT) / ".graph3d_analysis.json"
         node_limit = 5000
         no_viz = False
-        obsidian_dir = Path(_GRAPHIFY_OUT) / "obsidian"
+        obsidian_dir = Path(_GRAPH3D_OUT) / "obsidian"
         neo4j_uri: str | None = None
         neo4j_user = "neo4j"
         # F-031: prefer the NEO4J_PASSWORD env var so the password never
@@ -2758,10 +2758,10 @@ def main() -> None:
             elif a == "--max-diagram-edges" and i + 1 < len(args):
                 callflow_max_diagram_edges = int(args[i + 1]); i += 2
             elif a in ("-h", "--help") and subcmd == "callflow-html":
-                print("Usage: graphify export callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH]")
+                print("Usage: graph3d export callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH]")
                 print("  --report PATH          path to GRAPH_REPORT.md")
                 print("  --sections PATH        JSON section definitions")
-                print("  --output HTML          output path (default graphify-out/<project>-callflow.html)")
+                print("  --output HTML          output path (default graph3d-out/<project>-callflow.html)")
                 print("  --lang LANG            auto, zh-CN, en, etc. (default auto)")
                 print("  --max-sections N       maximum auto-derived sections (default 15)")
                 print("  --diagram-scale N      Mermaid diagram scale (default 1.0)")
@@ -2787,7 +2787,7 @@ def main() -> None:
                 elif (candidate / "graph.json").exists():
                     graph_path = candidate / "graph.json"
                 else:
-                    graph_path = candidate / _GRAPHIFY_OUT / "graph.json"
+                    graph_path = candidate / _GRAPH3D_OUT / "graph.json"
                 graph_path_explicit = True
                 i += 1
             else:
@@ -2797,18 +2797,18 @@ def main() -> None:
         if graph_path_explicit:
             graph_out_dir = graph_path.parent
             if not labels_path_explicit:
-                labels_path = graph_out_dir / ".graphify_labels.json"
+                labels_path = graph_out_dir / ".graph3d_labels.json"
             if not report_path_explicit:
                 report_path = graph_out_dir / "GRAPH_REPORT.md"
         labels_path = labels_path.expanduser()
         report_path = report_path.expanduser()
 
         if not graph_path.exists():
-            print(f"error: graph not found: {graph_path}. Run /graphify <path> first.", file=sys.stderr)
+            print(f"error: graph not found: {graph_path}. Run /graph3d <path> first.", file=sys.stderr)
             sys.exit(1)
 
         if subcmd == "callflow-html":
-            from graphify.callflow_html import write_callflow_html as _write_callflow_html
+            from graph3d.callflow_html import write_callflow_html as _write_callflow_html
             out = _write_callflow_html(
                 graph=graph_path,
                 report=report_path,
@@ -2826,7 +2826,7 @@ def main() -> None:
             sys.exit(0)
 
         from networkx.readwrite import json_graph as _jg
-        from graphify.build import build_from_json as _bfj
+        from graph3d.build import build_from_json as _bfj
 
         _enforce_graph_size_cap_or_exit(graph_path)
         _raw = json.loads(graph_path.read_text(encoding="utf-8"))
@@ -2852,7 +2852,7 @@ def main() -> None:
         # (`to_json` writes it on every node). The analysis sidecar is the
         # canonical source — but the post-commit / watch rebuild path doesn't
         # regenerate it, and `extract` may have its temp files cleaned up. When
-        # that happens, `graphify export html` previously bailed with
+        # that happens, `graph3d export html` previously bailed with
         # "Single community - aggregated view not useful." even though the
         # per-node attribute had the right data all along. Reconstruct from
         # the graph itself so downstream subcommands (html, obsidian, wiki,
@@ -2878,7 +2878,7 @@ def main() -> None:
         out_dir = graph_path.parent
 
         if subcmd == "html":
-            from graphify.export import to_html as _to_html
+            from graph3d.export import to_html as _to_html
             if no_viz:
                 html_target = out_dir / "graph.html"
                 if html_target.exists():
@@ -2891,7 +2891,7 @@ def main() -> None:
                     print(f"graph.html written - open in any browser, no server needed")
 
         elif subcmd == "obsidian":
-            from graphify.export import to_obsidian as _to_obsidian, to_canvas as _to_canvas
+            from graph3d.export import to_obsidian as _to_obsidian, to_canvas as _to_canvas
             n = _to_obsidian(G, communities, str(obsidian_dir),
                              community_labels=labels or None, cohesion=cohesion or None)
             print(f"Obsidian vault: {n} notes in {obsidian_dir}/")
@@ -2901,12 +2901,12 @@ def main() -> None:
             print(f"Open {obsidian_dir}/ as a vault in Obsidian.")
 
         elif subcmd == "wiki":
-            from graphify.wiki import to_wiki as _to_wiki
-            from graphify.analyze import god_nodes as _god_nodes
+            from graph3d.wiki import to_wiki as _to_wiki
+            from graph3d.analyze import god_nodes as _god_nodes
             if not communities:
                 print(
-                    "error: .graphify_analysis.json is missing or empty — refusing to export wiki to prevent data loss.\n"
-                    "Run `graphify extract .` (or `graphify cluster-only .`) to regenerate community data first.",
+                    "error: .graph3d_analysis.json is missing or empty — refusing to export wiki to prevent data loss.\n"
+                    "Run `graph3d extract .` (or `graph3d cluster-only .`) to regenerate community data first.",
                     file=sys.stderr,
                 )
                 sys.exit(1)
@@ -2919,19 +2919,19 @@ def main() -> None:
             print(f"  {out_dir}/wiki/index.md  ->  agent entry point")
 
         elif subcmd == "svg":
-            from graphify.export import to_svg as _to_svg
+            from graph3d.export import to_svg as _to_svg
             _to_svg(G, communities, str(out_dir / "graph.svg"),
                     community_labels=labels or None)
             print(f"graph.svg written - embeds in Obsidian, Notion, GitHub READMEs")
 
         elif subcmd == "graphml":
-            from graphify.export import to_graphml as _to_graphml
+            from graph3d.export import to_graphml as _to_graphml
             _to_graphml(G, communities, str(out_dir / "graph.graphml"))
             print(f"graph.graphml written - open in Gephi, yEd, or any GraphML tool")
 
         elif subcmd == "neo4j":
             if neo4j_uri:
-                from graphify.export import push_to_neo4j as _push
+                from graph3d.export import push_to_neo4j as _push
                 if neo4j_password is None:
                     print("error: --password required for --push", file=sys.stderr)
                     sys.exit(1)
@@ -2939,17 +2939,17 @@ def main() -> None:
                                password=neo4j_password, communities=communities)
                 print(f"Pushed to Neo4j: {result['nodes']} nodes, {result['edges']} edges")
             else:
-                from graphify.export import to_cypher as _to_cypher
+                from graph3d.export import to_cypher as _to_cypher
                 _to_cypher(G, str(out_dir / "cypher.txt"))
                 print(f"cypher.txt written - import with: cypher-shell < {out_dir}/cypher.txt")
 
     elif cmd == "benchmark":
-        from graphify.benchmark import run_benchmark, print_benchmark
-        graph_path = sys.argv[2] if len(sys.argv) > 2 else "graphify-out/graph.json"
+        from graph3d.benchmark import run_benchmark, print_benchmark
+        graph_path = sys.argv[2] if len(sys.argv) > 2 else "graph3d-out/graph.json"
         _enforce_graph_size_cap_or_exit(Path(graph_path))
         # Try to load corpus_words from detect output
         corpus_words = None
-        detect_path = Path(".graphify_detect.json")
+        detect_path = Path(".graph3d_detect.json")
         if detect_path.exists():
             try:
                 detect_data = json.loads(detect_path.read_text(encoding="utf-8"))
@@ -2961,14 +2961,14 @@ def main() -> None:
 
     elif cmd == "global":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
-        from graphify.global_graph import (
+        from graph3d.global_graph import (
             global_add as _global_add,
             global_remove as _global_remove,
             global_list as _global_list,
             global_path as _global_path,
         )
         if subcmd == "add":
-            # graphify global add <graph.json> [--as <tag>]
+            # graph3d global add <graph.json> [--as <tag>]
             args = sys.argv[3:]
             source = None
             tag = None
@@ -2981,7 +2981,7 @@ def main() -> None:
                 else:
                     i += 1
             if not source:
-                print("Usage: graphify global add <graph.json> [--as <repo-tag>]", file=sys.stderr)
+                print("Usage: graph3d global add <graph.json> [--as <repo-tag>]", file=sys.stderr)
                 sys.exit(1)
             tag = tag or source.parent.parent.name
             try:
@@ -2996,7 +2996,7 @@ def main() -> None:
         elif subcmd == "remove":
             tag = sys.argv[3] if len(sys.argv) > 3 else ""
             if not tag:
-                print("Usage: graphify global remove <repo-tag>", file=sys.stderr); sys.exit(1)
+                print("Usage: graph3d global remove <repo-tag>", file=sys.stderr); sys.exit(1)
             try:
                 removed = _global_remove(tag)
                 print(f"Removed '{tag}' from global graph ({removed} nodes pruned).")
@@ -3005,7 +3005,7 @@ def main() -> None:
         elif subcmd == "list":
             repos = _global_list()
             if not repos:
-                print("Global graph is empty. Use 'graphify global add' to add a project.")
+                print("Global graph is empty. Use 'graph3d global add' to add a project.")
             else:
                 print(f"Global graph: {_global_path()}")
                 for tag, info in repos.items():
@@ -3013,7 +3013,7 @@ def main() -> None:
         elif subcmd == "path":
             print(_global_path())
         else:
-            print("Usage: graphify global [add|remove|list|path]", file=sys.stderr); sys.exit(1)
+            print("Usage: graph3d global [add|remove|list|path]", file=sys.stderr); sys.exit(1)
 
     elif cmd == "extract":
         # Headless full-pipeline extraction for CI / scripts (#698).
@@ -3024,7 +3024,7 @@ def main() -> None:
         # has an API key set.
         if len(sys.argv) < 3:
             print(
-                "Usage: graphify extract <path> [--backend gemini|kimi|claude|openai|deepseek|ollama] "
+                "Usage: graph3d extract <path> [--backend gemini|kimi|claude|openai|deepseek|ollama] "
                 "[--model M] [--mode deep] [--out DIR] [--google-workspace] [--no-cluster] "
                 "[--max-workers N] [--token-budget N] [--max-concurrency N] "
                 "[--api-timeout S]",
@@ -3149,20 +3149,20 @@ def main() -> None:
             sys.exit(2)
         deep_mode = extract_mode == "deep"
         if deep_mode:
-            print("[graphify extract] deep mode enabled: richer semantic extraction")
+            print("[graph3d extract] deep mode enabled: richer semantic extraction")
 
-        # CLI flag wins over env var. Setting GRAPHIFY_API_TIMEOUT here so
+        # CLI flag wins over env var. Setting GRAPH3D_API_TIMEOUT here so
         # _call_openai_compat picks it up without needing a new kwarg path.
         if cli_api_timeout is not None:
-            os.environ["GRAPHIFY_API_TIMEOUT"] = str(cli_api_timeout)
+            os.environ["GRAPH3D_API_TIMEOUT"] = str(cli_api_timeout)
         if cli_max_workers is not None:
-            os.environ["GRAPHIFY_MAX_WORKERS"] = str(cli_max_workers)
+            os.environ["GRAPH3D_MAX_WORKERS"] = str(cli_max_workers)
 
         # Backend resolution. If user did not pass --backend, sniff env.
         # If backend was explicitly requested, validate its key is present
         # and surface a clear error early — don't let extract_corpus_parallel
         # raise mid-run after we've spent time on AST extraction.
-        from graphify.llm import (
+        from graph3d.llm import (
             BACKENDS as _BACKENDS,
             detect_backend as _detect_backend,
             estimate_cost as _estimate_cost,
@@ -3232,24 +3232,24 @@ def main() -> None:
                 )
                 sys.exit(1)
 
-        # Resolve output dir. The user-facing contract is "<out>/graphify-out/"
-        # so a fresh checkout writes graphify-out/ at the project root, matching
+        # Resolve output dir. The user-facing contract is "<out>/graph3d-out/"
+        # so a fresh checkout writes graph3d-out/ at the project root, matching
         # the skill.md pipeline.
         out_root = (out_dir.resolve() if out_dir else target)
-        graphify_out = out_root / "graphify-out"
-        graphify_out.mkdir(parents=True, exist_ok=True)
+        graph3d_out = out_root / "graph3d-out"
+        graph3d_out.mkdir(parents=True, exist_ok=True)
 
-        from graphify.detect import (
+        from graph3d.detect import (
             detect as _detect,
             detect_incremental as _detect_incremental,
             save_manifest as _save_manifest,
         )
-        manifest_path = graphify_out / "manifest.json"
-        existing_graph_path = graphify_out / "graph.json"
+        manifest_path = graph3d_out / "manifest.json"
+        existing_graph_path = graph3d_out / "graph.json"
         incremental_mode = manifest_path.exists() and existing_graph_path.exists()
 
         if incremental_mode:
-            print(f"[graphify extract] incremental scan of {target}")
+            print(f"[graph3d extract] incremental scan of {target}")
             detection = _detect_incremental(
                 target,
                 manifest_path=str(manifest_path),
@@ -3257,7 +3257,7 @@ def main() -> None:
                 extra_excludes=cli_excludes or None,
             )
         else:
-            print(f"[graphify extract] scanning {target}")
+            print(f"[graph3d extract] scanning {target}")
             detection = _detect(target, google_workspace=google_workspace or None, extra_excludes=cli_excludes or None)
 
         files_by_type = detection.get("files", {})
@@ -3280,13 +3280,13 @@ def main() -> None:
         semantic_files = doc_files + paper_files + image_files
         if incremental_mode:
             print(
-                f"[graphify extract] {len(code_files)} code, {len(doc_files)} docs, "
+                f"[graph3d extract] {len(code_files)} code, {len(doc_files)} docs, "
                 f"{len(paper_files)} papers, {len(image_files)} images changed; "
                 f"{unchanged_total} unchanged; {len(deleted_files)} deleted"
             )
         else:
             print(
-                f"[graphify extract] found {len(code_files)} code, "
+                f"[graph3d extract] found {len(code_files)} code, "
                 f"{len(doc_files)} docs, {len(paper_files)} papers, "
                 f"{len(image_files)} images"
             )
@@ -3295,19 +3295,19 @@ def main() -> None:
         # the issue #698 case — skip cleanly instead of crashing inside extract().
         ast_result: dict = {"nodes": [], "edges": [], "input_tokens": 0, "output_tokens": 0}
         if code_files:
-            from graphify.extract import extract as _ast_extract
+            from graph3d.extract import extract as _ast_extract
             ast_kwargs: dict = {"cache_root": target}
             if cli_max_workers is not None:
                 ast_kwargs["max_workers"] = cli_max_workers
-            print(f"[graphify extract] AST extraction on {len(code_files)} code files...")
+            print(f"[graph3d extract] AST extraction on {len(code_files)} code files...")
             try:
                 ast_result = _ast_extract(code_files, **ast_kwargs)
             except Exception as exc:
-                print(f"[graphify extract] AST extraction failed: {exc}", file=sys.stderr)
+                print(f"[graph3d extract] AST extraction failed: {exc}", file=sys.stderr)
                 ast_result = {"nodes": [], "edges": [], "input_tokens": 0, "output_tokens": 0}
 
         # Semantic extraction on docs/papers/images. Check cache first.
-        from graphify.cache import (
+        from graph3d.cache import (
             check_semantic_cache as _check_semantic_cache,
             save_semantic_cache as _save_semantic_cache,
         )
@@ -3328,10 +3328,10 @@ def main() -> None:
             sem_result["edges"].extend(cached_edges)
             sem_result["hyperedges"].extend(cached_hyperedges)
             if sem_cache_hits:
-                print(f"[graphify extract] semantic cache: {sem_cache_hits} hit / {sem_cache_misses} miss")
+                print(f"[graph3d extract] semantic cache: {sem_cache_hits} hit / {sem_cache_misses} miss")
 
             if uncached_paths:
-                print(f"[graphify extract] semantic extraction on {len(uncached_paths)} files via {backend}...")
+                print(f"[graph3d extract] semantic extraction on {len(uncached_paths)} files via {backend}...")
                 corpus_kwargs: dict = {
                     "backend": backend,
                     "model": model,
@@ -3353,7 +3353,7 @@ def main() -> None:
                     _chunk_stats["total"] = total
                     _chunk_stats["succeeded"] += 1
                     print(
-                        f"[graphify extract] chunk {idx + 1}/{total} done",
+                        f"[graph3d extract] chunk {idx + 1}/{total} done",
                         flush=True,
                     )
                 corpus_kwargs["on_chunk_done"] = _progress
@@ -3368,7 +3368,7 @@ def main() -> None:
                     sys.exit(1)
                 except Exception as exc:
                     print(
-                        f"[graphify extract] semantic extraction failed: {exc}",
+                        f"[graph3d extract] semantic extraction failed: {exc}",
                         file=sys.stderr,
                     )
                     fresh = {"nodes": [], "edges": [], "hyperedges": [], "input_tokens": 0, "output_tokens": 0}
@@ -3378,7 +3378,7 @@ def main() -> None:
                 # fail instead of writing an AST-only graph with exit 0.
                 if uncached_paths and _chunk_stats["succeeded"] == 0:
                     print(
-                        f"[graphify extract] error: all semantic chunks failed "
+                        f"[graph3d extract] error: all semantic chunks failed "
                         f"for backend '{backend}' ({len(uncached_paths)} uncached files) - "
                         f"see per-chunk errors above. If you see 'requires the X package', "
                         f"run `pip install X` and retry.",
@@ -3393,7 +3393,7 @@ def main() -> None:
                         root=target,
                     )
                 except Exception as exc:
-                    print(f"[graphify extract] warning: could not write semantic cache: {exc}", file=sys.stderr)
+                    print(f"[graph3d extract] warning: could not write semantic cache: {exc}", file=sys.stderr)
                 sem_result["nodes"].extend(fresh.get("nodes", []))
                 sem_result["edges"].extend(fresh.get("edges", []))
                 sem_result["hyperedges"].extend(fresh.get("hyperedges", []))
@@ -3412,8 +3412,8 @@ def main() -> None:
             "output_tokens": ast_result.get("output_tokens", 0) + sem_result.get("output_tokens", 0),
         }
 
-        graph_json_path = graphify_out / "graph.json"
-        analysis_path = graphify_out / ".graphify_analysis.json"
+        graph_json_path = graph3d_out / "graph.json"
+        analysis_path = graph3d_out / ".graph3d_analysis.json"
 
         # Build a manifest-safe files dict: only stamp semantic_hash for files
         # that actually produced output (cache hit or fresh extraction). Files
@@ -3434,8 +3434,8 @@ def main() -> None:
         if no_cluster:
             # --no-cluster: dump the raw merged extraction as graph.json.
             # No NetworkX, no community detection, no analysis sidecar.
-            from graphify.export import backup_if_protected as _backup
-            _backup(graphify_out)
+            from graph3d.export import backup_if_protected as _backup
+            _backup(graph3d_out)
             graph_json_path.write_text(
                 json.dumps(merged, indent=2), encoding="utf-8"
             )
@@ -3443,13 +3443,13 @@ def main() -> None:
                 backend, merged["input_tokens"], merged["output_tokens"]
             )
             print(
-                f"[graphify extract] wrote {graph_json_path} — "
+                f"[graph3d extract] wrote {graph_json_path} — "
                 f"{len(merged['nodes'])} nodes, {len(merged['edges'])} edges "
                 f"(no clustering)"
             )
             if merged["input_tokens"] or merged["output_tokens"]:
                 print(
-                    f"[graphify extract] tokens: "
+                    f"[graph3d extract] tokens: "
                     f"{merged['input_tokens']:,} in / "
                     f"{merged['output_tokens']:,} out, "
                     f"est. cost: ${cost:.4f}"
@@ -3457,30 +3457,30 @@ def main() -> None:
             try:
                 _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both")
             except Exception as exc:
-                print(f"[graphify extract] warning: could not write manifest: {exc}", file=sys.stderr)
+                print(f"[graph3d extract] warning: could not write manifest: {exc}", file=sys.stderr)
             if global_merge:
-                from graphify.global_graph import global_add as _global_add
+                from graph3d.global_graph import global_add as _global_add
                 _tag = global_repo_tag or target.name
                 try:
-                    result = _global_add(graphify_out / "graph.json", _tag)
+                    result = _global_add(graph3d_out / "graph.json", _tag)
                     if result["skipped"]:
-                        print(f"[graphify global] '{_tag}' unchanged since last add - skipped.")
+                        print(f"[graph3d global] '{_tag}' unchanged since last add - skipped.")
                     else:
-                        print(f"[graphify global] '{_tag}' merged into global graph "
+                        print(f"[graph3d global] '{_tag}' merged into global graph "
                               f"(+{result['nodes_added']} nodes, -{result['nodes_removed']} pruned).")
                 except Exception as exc:
-                    print(f"[graphify global] warning: failed to merge into global graph: {exc}", file=sys.stderr)
+                    print(f"[graph3d global] warning: failed to merge into global graph: {exc}", file=sys.stderr)
             sys.exit(0)
 
         # Build graph + cluster + score + write.
-        from graphify.build import (
+        from graph3d.build import (
             build as _build,
             build_from_json as _build_from_json,
             build_merge as _build_merge,
         )
-        from graphify.cluster import cluster as _cluster, score_all as _score_all
-        from graphify.export import to_json as _to_json
-        from graphify.analyze import god_nodes as _god_nodes, surprising_connections as _surprising
+        from graph3d.cluster import cluster as _cluster, score_all as _score_all
+        from graph3d.export import to_json as _to_json
+        from graph3d.analyze import god_nodes as _god_nodes, surprising_connections as _surprising
         dedup_backend = backend if dedup_llm else None
         if incremental_mode:
             G = _build_merge(
@@ -3495,7 +3495,7 @@ def main() -> None:
             G = _build([merged], dedup=True, dedup_llm_backend=dedup_backend, root=target)
         if G.number_of_nodes() == 0:
             print(
-                "[graphify extract] graph is empty — extraction produced no nodes. "
+                "[graph3d extract] graph is empty — extraction produced no nodes. "
                 "Possible causes: all files skipped, binary-only corpus, or LLM "
                 "returned no edges.",
                 file=sys.stderr,
@@ -3513,25 +3513,25 @@ def main() -> None:
         except Exception:
             surprises = []
 
-        from graphify.export import backup_if_protected as _backup
-        _backup(graphify_out)
+        from graph3d.export import backup_if_protected as _backup
+        _backup(graph3d_out)
         _to_json(G, communities, str(graph_json_path), force=True)
         if merged.get("output_tokens", 0) > 0:
-            (graphify_out / ".graphify_semantic_marker").write_text(
+            (graph3d_out / ".graph3d_semantic_marker").write_text(
                 json.dumps({"output_tokens": merged["output_tokens"]}), encoding="utf-8"
             )
         if global_merge:
-            from graphify.global_graph import global_add as _global_add
+            from graph3d.global_graph import global_add as _global_add
             _tag = global_repo_tag or target.name
             try:
-                result = _global_add(graphify_out / "graph.json", _tag)
+                result = _global_add(graph3d_out / "graph.json", _tag)
                 if result["skipped"]:
-                    print(f"[graphify global] '{_tag}' unchanged since last add - skipped.")
+                    print(f"[graph3d global] '{_tag}' unchanged since last add - skipped.")
                 else:
-                    print(f"[graphify global] '{_tag}' merged into global graph "
+                    print(f"[graph3d global] '{_tag}' merged into global graph "
                           f"(+{result['nodes_added']} nodes, -{result['nodes_removed']} pruned).")
             except Exception as exc:
-                print(f"[graphify global] warning: failed to merge into global graph: {exc}", file=sys.stderr)
+                print(f"[graph3d global] warning: failed to merge into global graph: {exc}", file=sys.stderr)
         analysis = {
             "communities": {str(k): v for k, v in communities.items()},
             "cohesion": {str(k): v for k, v in cohesion.items()},
@@ -3546,42 +3546,42 @@ def main() -> None:
         try:
             _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both")
         except Exception as exc:
-            print(f"[graphify extract] warning: could not write manifest: {exc}", file=sys.stderr)
+            print(f"[graph3d extract] warning: could not write manifest: {exc}", file=sys.stderr)
 
         cost = _estimate_cost(backend, merged["input_tokens"], merged["output_tokens"])
         print(
-            f"[graphify extract] wrote {graph_json_path}: "
+            f"[graph3d extract] wrote {graph_json_path}: "
             f"{G.number_of_nodes()} nodes, {G.number_of_edges()} edges, "
             f"{len(communities)} communities"
         )
-        print(f"[graphify extract] wrote {analysis_path}")
+        print(f"[graph3d extract] wrote {analysis_path}")
         if incremental_mode:
             print(
-                f"[graphify extract] incremental summary: "
+                f"[graph3d extract] incremental summary: "
                 f"{sem_cache_hits + unchanged_total} files cached/unchanged, "
                 f"{len(code_files) + sem_cache_misses} re-extracted, "
                 f"{len(deleted_files)} deleted"
             )
         elif sem_cache_hits:
-            print(f"[graphify extract] semantic cache: {sem_cache_hits} cached, {sem_cache_misses} re-extracted")
+            print(f"[graph3d extract] semantic cache: {sem_cache_hits} cached, {sem_cache_misses} re-extracted")
         if merged["input_tokens"] or merged["output_tokens"]:
             print(
-                f"[graphify extract] tokens: "
+                f"[graph3d extract] tokens: "
                 f"{merged['input_tokens']:,} in / "
                 f"{merged['output_tokens']:,} out, "
                 f"est. cost (~{backend}): ${cost:.4f}"
             )
 
     elif cmd == "cache-check":
-        # graphify cache-check <files_from> [--root <dir>]
+        # graph3d cache-check <files_from> [--root <dir>]
         # Reads file paths (one per line) from <files_from>, checks semantic cache.
         # Writes:
-        #   graphify-out/.graphify_cached.json   — already-cached nodes/edges/hyperedges
-        #   graphify-out/.graphify_uncached.txt  — paths that need extraction
+        #   graph3d-out/.graph3d_cached.json   — already-cached nodes/edges/hyperedges
+        #   graph3d-out/.graph3d_uncached.txt  — paths that need extraction
         # Stdout: "Cache: N hit, M miss"
-        from graphify.cache import check_semantic_cache
+        from graph3d.cache import check_semantic_cache
         if len(sys.argv) < 3:
-            print("Usage: graphify cache-check <files_from> [--root <dir>]", file=sys.stderr)
+            print("Usage: graph3d cache-check <files_from> [--root <dir>]", file=sys.stderr)
             sys.exit(1)
         files_from = Path(sys.argv[2])
         root = Path(".")
@@ -3594,24 +3594,24 @@ def main() -> None:
                 i += 1
         files = [f for f in files_from.read_text(encoding="utf-8").splitlines() if f.strip()]
         cached_nodes, cached_edges, cached_hyperedges, uncached = check_semantic_cache(files, root)
-        out = root / "graphify-out"
+        out = root / "graph3d-out"
         out.mkdir(parents=True, exist_ok=True)
         if cached_nodes or cached_edges or cached_hyperedges:
-            (out / ".graphify_cached.json").write_text(
+            (out / ".graph3d_cached.json").write_text(
                 json.dumps({"nodes": cached_nodes, "edges": cached_edges, "hyperedges": cached_hyperedges},
                            ensure_ascii=False),
                 encoding="utf-8",
             )
-        (out / ".graphify_uncached.txt").write_text("\n".join(uncached), encoding="utf-8")
+        (out / ".graph3d_uncached.txt").write_text("\n".join(uncached), encoding="utf-8")
         print(f"Cache: {len(files) - len(uncached)} hit, {len(uncached)} miss")
 
     elif cmd == "merge-chunks":
-        # graphify merge-chunks <chunk_glob_or_files...> --out <path>
-        # Concatenates .graphify_chunk_*.json files written by semantic subagents.
+        # graph3d merge-chunks <chunk_glob_or_files...> --out <path>
+        # Concatenates .graph3d_chunk_*.json files written by semantic subagents.
         # Deduplicates nodes by id (first writer wins). Sums token counts.
         import glob as _glob
         if len(sys.argv) < 3:
-            print("Usage: graphify merge-chunks <chunk_files...> --out <path>", file=sys.stderr)
+            print("Usage: graph3d merge-chunks <chunk_files...> --out <path>", file=sys.stderr)
             sys.exit(1)
         out_path: Path | None = None
         chunk_args: list[str] = []
@@ -3636,7 +3636,7 @@ def main() -> None:
             try:
                 chunk = json.loads(Path(cf).read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError) as exc:
-                print(f"[graphify merge-chunks] warning: skipping {cf}: {exc}", file=sys.stderr)
+                print(f"[graph3d merge-chunks] warning: skipping {cf}: {exc}", file=sys.stderr)
                 continue
             for n in chunk.get("nodes", []):
                 if n.get("id") not in seen_ids:
@@ -3654,11 +3654,11 @@ def main() -> None:
         )
 
     elif cmd == "merge-semantic":
-        # graphify merge-semantic --cached <path> --new <path> --out <path>
+        # graph3d merge-semantic --cached <path> --new <path> --out <path>
         # Merges cached semantic results with freshly-extracted chunk results.
         # Deduplicates nodes by id (cached entries take priority over new ones).
         if len(sys.argv) < 3:
-            print("Usage: graphify merge-semantic --cached <path> --new <path> --out <path>", file=sys.stderr)
+            print("Usage: graph3d merge-semantic --cached <path> --new <path> --out <path>", file=sys.stderr)
             sys.exit(1)
         cached_path: Path | None = None
         new_path: Path | None = None
@@ -3695,15 +3695,15 @@ def main() -> None:
         print(f"Merged: {len(merged2['nodes'])} nodes, {len(merged2['edges'])} edges")
 
     elif Path(cmd).exists() or cmd in (".", "..") or cmd.startswith(("./", "../", "/", "~")):
-        # User ran `graphify <path>` directly — treat as `graphify extract <path>`.
-        # Common when following the PowerShell note in README (`graphify .`) or
+        # User ran `graph3d <path>` directly — treat as `graph3d extract <path>`.
+        # Common when following the PowerShell note in README (`graph3d .`) or
         # copy-pasting skill invocations without the leading slash.
         sys.argv.insert(2, sys.argv[1])
         sys.argv[1] = "extract"
         main()
     else:
         print(f"error: unknown command '{cmd}'", file=sys.stderr)
-        print("Run 'graphify --help' for usage.", file=sys.stderr)
+        print("Run 'graph3d --help' for usage.", file=sys.stderr)
         sys.exit(1)
 
 

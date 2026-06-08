@@ -1,7 +1,7 @@
-"""Tests for graphify claude install / uninstall commands."""
+"""Tests for graph3d claude install / uninstall commands."""
 from pathlib import Path
 import pytest
-from graphify.__main__ import claude_install, claude_uninstall, _CLAUDE_MD_MARKER, _CLAUDE_MD_SECTION
+from graph3d.__main__ import claude_install, claude_uninstall, _CLAUDE_MD_MARKER, _CLAUDE_MD_SECTION
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ def test_install_contains_expected_rules(tmp_path):
     content = (tmp_path / "CLAUDE.md").read_text()
     assert "GRAPH_REPORT.md" in content
     assert "wiki/index.md" in content
-    assert "graphify update" in content
+    assert "graph3d update" in content
 
 
 def test_install_appends_to_existing_claude_md(tmp_path):
@@ -59,7 +59,7 @@ def test_install_idempotent_message(tmp_path, capsys):
 # ---------------------------------------------------------------------------
 
 def test_uninstall_removes_section(tmp_path):
-    """Removes the graphify section after it was installed."""
+    """Removes the graph3d section after it was installed."""
     claude_install(tmp_path)
     claude_uninstall(tmp_path)
     target = tmp_path / "CLAUDE.md"
@@ -69,7 +69,7 @@ def test_uninstall_removes_section(tmp_path):
 
 
 def test_uninstall_preserves_other_content(tmp_path):
-    """Uninstall keeps pre-existing content outside the graphify section."""
+    """Uninstall keeps pre-existing content outside the graph3d section."""
     target = tmp_path / "CLAUDE.md"
     target.write_text("# My Project\n\nSome rules.\n")
     claude_install(tmp_path)
@@ -82,7 +82,7 @@ def test_uninstall_preserves_other_content(tmp_path):
 
 
 def test_uninstall_no_op_when_not_installed(tmp_path, capsys):
-    """Uninstall on a CLAUDE.md without graphify section prints a message and exits cleanly."""
+    """Uninstall on a CLAUDE.md without graph3d section prints a message and exits cleanly."""
     target = tmp_path / "CLAUDE.md"
     target.write_text("# Other stuff\n")
     claude_uninstall(tmp_path)
@@ -120,7 +120,7 @@ def test_install_settings_json_idempotent(tmp_path):
     settings_path = tmp_path / ".claude" / "settings.json"
     settings = json.loads(settings_path.read_text())
     hooks = settings.get("hooks", {}).get("PreToolUse", [])
-    bash_hooks = [h for h in hooks if h.get("matcher") == "Bash" and "graphify" in str(h)]
+    bash_hooks = [h for h in hooks if h.get("matcher") == "Bash" and "graph3d" in str(h)]
     assert len(bash_hooks) == 1
 
 
@@ -133,4 +133,4 @@ def test_uninstall_removes_settings_hook(tmp_path):
     if settings_path.exists():
         settings = json.loads(settings_path.read_text())
         hooks = settings.get("hooks", {}).get("PreToolUse", [])
-        assert not any(h.get("matcher") == "Bash" and "graphify" in str(h) for h in hooks)
+        assert not any(h.get("matcher") == "Bash" and "graph3d" in str(h) for h in hooks)

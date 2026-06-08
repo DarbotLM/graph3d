@@ -1,10 +1,10 @@
-"""Comprehensive tests for graphify.scip_ingest."""
+"""Comprehensive tests for graph3d.scip_ingest."""
 
 from __future__ import annotations
 
 import pytest
 
-from graphify.scip_ingest import (
+from graph3d.scip_ingest import (
     _build_scip_metadata,
     _make_scip_node_id,
     _scip_kind_to_file_type,
@@ -1103,9 +1103,9 @@ def test_relationship_target_unknown_emits_stub_node():
 
 
 def test_relationship_edges_survive_validate_extraction_and_build():
-    """Result passes Graphify's validate_extraction and build_from_json keeps the edges."""
-    from graphify.build import build_from_json
-    from graphify.validate import validate_extraction
+    """Result passes Graph3d's validate_extraction and build_from_json keeps the edges."""
+    from graph3d.build import build_from_json
+    from graph3d.validate import validate_extraction
 
     doc = {
         "documents": [

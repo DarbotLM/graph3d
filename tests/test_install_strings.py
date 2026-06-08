@@ -1,9 +1,9 @@
 """Regression tests for install-time instruction strings.
 
-These strings live in graphify/__main__.py and are written into project-local
+These strings live in graph3d/__main__.py and are written into project-local
 files (CLAUDE.md, AGENTS.md, GEMINI.md, .cursor/rules/, .kiro/steering/, etc.)
-or into in-process hook payloads. Earlier versions of graphify told every
-assistant to "ALWAYS read graphify-out/GRAPH_REPORT.md before answering" —
+or into in-process hook payloads. Earlier versions of graph3d told every
+assistant to "ALWAYS read graph3d-out/GRAPH_REPORT.md before answering" —
 which silently increased per-question token usage in Claude Code sessions
 (issue #580). This file locks in the query-first policy so a future revert
 or partial change is caught by CI.
@@ -11,7 +11,7 @@ or partial change is caught by CI.
 from __future__ import annotations
 import json
 
-from graphify.__main__ import (
+from graph3d.__main__ import (
     _SETTINGS_HOOK,
     _CLAUDE_MD_SECTION,
     _AGENTS_MD_SECTION,
@@ -44,18 +44,18 @@ _INSTALL_TEXTS: dict[str, str] = {
 }
 
 
-def test_every_install_surface_recommends_graphify_query():
-    """All ten install surfaces must point the assistant at `graphify query`
+def test_every_install_surface_recommends_graph3d_query():
+    """All ten install surfaces must point the assistant at `graph3d query`
     as the first action for codebase questions. This is the load-bearing
     fix for issue #580 — the alternative (reading GRAPH_REPORT.md) costs
     ~10x more tokens per question and made the project worse-than-baseline
     in real Claude Code sessions."""
     missing: list[str] = []
     for name, text in _INSTALL_TEXTS.items():
-        if "graphify query" not in text:
+        if "graph3d query" not in text:
             missing.append(name)
     assert not missing, (
-        f"these install surfaces no longer mention `graphify query`: {missing}. "
+        f"these install surfaces no longer mention `graph3d query`: {missing}. "
         f"If you removed it intentionally, consider whether issue #580 is back."
     )
 
@@ -121,8 +121,8 @@ def test_report_is_still_referenced_as_fallback():
 
 
 def test_agents_section_does_not_skip_dirty_graph_output():
-    assert "Dirty graphify-out/ files are expected" in _AGENTS_MD_SECTION
-    assert "not a reason to skip graphify" in _AGENTS_MD_SECTION
+    assert "Dirty graph3d-out/ files are expected" in _AGENTS_MD_SECTION
+    assert "not a reason to skip graph3d" in _AGENTS_MD_SECTION
 
 
 def test_how_it_works_clarifies_code_only_semantic_extraction():

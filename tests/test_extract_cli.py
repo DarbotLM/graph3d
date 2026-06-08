@@ -1,9 +1,9 @@
-"""Tests for `graphify extract` CLI dispatch path in graphify.__main__."""
+"""Tests for `graph3d extract` CLI dispatch path in graph3d.__main__."""
 from __future__ import annotations
 
 import pytest
 
-import graphify.__main__ as mainmod
+import graph3d.__main__ as mainmod
 
 
 def _make_corpus(tmp_path):
@@ -23,8 +23,8 @@ def test_extract_exits_nonzero_when_all_semantic_chunks_fail(
     """When every semantic chunk errors (e.g. backend SDK not installed),
     the CLI must exit non-zero instead of silently writing an AST-only graph.
 
-    The bug this guards: `pip install graphifyy` doesn't pull in `anthropic`,
-    so `graphify extract --backend claude` would print per-chunk errors and
+    The bug this guards: `pip install graph3d` doesn't pull in `anthropic`,
+    so `graph3d extract --backend claude` would print per-chunk errors and
     still exit 0 with a graph.json. Callers checking exit status saw success.
     """
     corpus = _make_corpus(tmp_path)
@@ -49,13 +49,13 @@ def test_extract_exits_nonzero_when_all_semantic_chunks_fail(
         }
 
     monkeypatch.setattr(
-        "graphify.llm.extract_corpus_parallel", _all_chunks_failed
+        "graph3d.llm.extract_corpus_parallel", _all_chunks_failed
     )
     monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
     monkeypatch.setattr(
         mainmod.sys,
         "argv",
-        ["graphify", "extract", str(corpus), "--backend", "claude",
+        ["graph3d", "extract", str(corpus), "--backend", "claude",
          "--out", str(out_dir)],
     )
 
@@ -73,7 +73,7 @@ def test_extract_exits_nonzero_when_all_semantic_chunks_fail(
 
     # No graph.json should have been written - the failure must abort before
     # the merge/cluster/write phase, not after.
-    assert not (out_dir / "graphify-out" / "graph.json").exists(), (
+    assert not (out_dir / "graph3d-out" / "graph.json").exists(), (
         "graph.json must not be written when semantic extraction fails"
     )
 
@@ -100,13 +100,13 @@ def test_extract_succeeds_when_at_least_one_chunk_completes(
         }
 
     monkeypatch.setattr(
-        "graphify.llm.extract_corpus_parallel", _one_chunk_succeeded
+        "graph3d.llm.extract_corpus_parallel", _one_chunk_succeeded
     )
     monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
     monkeypatch.setattr(
         mainmod.sys,
         "argv",
-        ["graphify", "extract", str(corpus), "--backend", "claude",
+        ["graph3d", "extract", str(corpus), "--backend", "claude",
          "--out", str(out_dir)],
     )
 
@@ -118,6 +118,6 @@ def test_extract_succeeds_when_at_least_one_chunk_completes(
         assert exc.code in (None, 0), f"unexpected exit code {exc.code}"
 
     # graph.json should exist on the happy path
-    assert (out_dir / "graphify-out" / "graph.json").exists(), (
+    assert (out_dir / "graph3d-out" / "graph.json").exists(), (
         "graph.json must be written on the happy path"
     )

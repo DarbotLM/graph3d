@@ -30,5 +30,5 @@ jobs:
 
       - name: Verify install works end-to-end
         run: |
-          uv run graphify --help
-          uv run graphify install
+          uv run graph3d --help
+          uv run graph3d install

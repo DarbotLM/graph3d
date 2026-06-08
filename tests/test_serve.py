@@ -4,7 +4,7 @@ import pytest
 import networkx as nx
 from networkx.readwrite import json_graph
 
-from graphify.serve import (
+from graph3d.serve import (
     _communities_from_graph,
     _score_nodes,
     _compute_idf,
@@ -97,7 +97,7 @@ def test_query_terms_strips_search_punctuation():
 
 
 def test_query_terms_filters_only_short_english_terms(monkeypatch):
-    import graphify.serve as serve_mod
+    import graph3d.serve as serve_mod
 
     class FakeJieba:
         def cut(self, text):
@@ -238,10 +238,10 @@ def test_load_graph_roundtrip(tmp_path):
     assert G2.number_of_edges() == G.number_of_edges()
 
 def test_load_graph_missing_file(tmp_path):
-    graphify_dir = tmp_path / "graphify-out"
-    graphify_dir.mkdir()
+    graph3d_dir = tmp_path / "graph3d-out"
+    graph3d_dir.mkdir()
     with pytest.raises(SystemExit):
-        _load_graph(str(graphify_dir / "nonexistent.json"))
+        _load_graph(str(graph3d_dir / "nonexistent.json"))
 
 
 def test_load_graph_rejects_oversized_file(monkeypatch, tmp_path, capsys):
@@ -250,7 +250,7 @@ def test_load_graph_rejects_oversized_file(monkeypatch, tmp_path, capsys):
     data = json_graph.node_link_data(G, edges="links")
     p = tmp_path / "graph.json"
     p.write_text(json.dumps(data))
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 16)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 16)
     with pytest.raises(SystemExit):
         _load_graph(str(p))
     err = capsys.readouterr().err
@@ -265,7 +265,7 @@ def test_load_graph_accepts_under_cap(monkeypatch, tmp_path):
     p = tmp_path / "graph.json"
     p.write_text(json.dumps(data))
     # Cap well above the actual file size — load proceeds.
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 10 * 1024 * 1024)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 10 * 1024 * 1024)
     G2 = _load_graph(str(p))
     assert G2.number_of_nodes() == G.number_of_nodes()
 
@@ -286,7 +286,7 @@ def test_maybe_reload_detects_graph_change(tmp_path):
     import time
     from unittest.mock import patch
 
-    out = tmp_path / "graphify-out"
+    out = tmp_path / "graph3d-out"
     out.mkdir()
     graph_path = out / "graph.json"
     _write_graph(graph_path, ["alpha", "beta"])
@@ -307,7 +307,7 @@ def test_load_graph_cache_key_changes_with_content(tmp_path):
     """mtime_ns + size uniquely identifies a graph version (#874)."""
     import time
 
-    out = tmp_path / "graphify-out"
+    out = tmp_path / "graph3d-out"
     out.mkdir()
     graph_path = out / "graph.json"
     _write_graph(graph_path, ["a"])
@@ -440,7 +440,7 @@ def test_query_seeds_from_identifier_not_noise():
 
 def test_query_graph_text_parameter_type_context_filter_changes_traversal():
     import networkx as nx
-    from graphify.serve import _query_graph_text
+    from graph3d.serve import _query_graph_text
 
     graph = nx.Graph()
     graph.add_node("process", label="process", source_file="sample.cs", source_location="L20")
@@ -458,7 +458,7 @@ def test_query_graph_text_parameter_type_context_filter_changes_traversal():
 
 def test_query_graph_text_context_filter_aliases_resolve():
     import networkx as nx
-    from graphify.serve import _normalize_context_filters
+    from graph3d.serve import _normalize_context_filters
 
     assert _normalize_context_filters(["param"]) == ["parameter_type"]
     assert _normalize_context_filters(["parameter"]) == ["parameter_type"]
@@ -477,7 +477,7 @@ def test_query_graph_text_context_filter_aliases_resolve():
 
 def test_query_terms_chinese_segments_with_cached_jieba(monkeypatch):
     """Chinese text should use the cached jieba module and keep the original term."""
-    import graphify.serve as serve_mod
+    import graph3d.serve as serve_mod
 
     class FakeJieba:
         def cut(self, text):
@@ -500,7 +500,7 @@ def test_query_terms_chinese_mixed():
 
 def test_query_terms_non_chinese_scripts_are_not_segmented():
     """Japanese kana and Hangul are kept as terms but not segmented as Chinese."""
-    import graphify.serve as serve_mod
+    import graph3d.serve as serve_mod
 
     assert not serve_mod._has_chinese("かなカナ한글")
     assert serve_mod._query_terms("かなカナ한글") == ["かなカナ한글"]
@@ -508,7 +508,7 @@ def test_query_terms_non_chinese_scripts_are_not_segmented():
 
 def test_query_terms_chinese_no_jieba_fallback(monkeypatch):
     """When jieba is not installed, fallback to character bigrams."""
-    import graphify.serve as serve_mod
+    import graph3d.serve as serve_mod
 
     monkeypatch.setattr(serve_mod, "_jieba", None)
     terms = serve_mod._query_terms("页面路由")

@@ -1,7 +1,7 @@
-"""Tests for graphify/cache.py."""
+"""Tests for graph3d/cache.py."""
 import pytest
 from pathlib import Path
-from graphify.cache import file_hash, cache_dir, load_cached, save_cached, cached_files, clear_cache, _body_content
+from graph3d.cache import file_hash, cache_dir, load_cached, save_cached, cached_files, clear_cache, _body_content
 
 
 @pytest.fixture
@@ -67,10 +67,10 @@ def test_cached_files(tmp_path, cache_root):
 
 
 def test_clear_cache(tmp_file, cache_root):
-    """clear_cache removes all .json files from graphify-out/cache/ (all subdirs)."""
+    """clear_cache removes all .json files from graph3d-out/cache/ (all subdirs)."""
     save_cached(tmp_file, {"nodes": [], "edges": []}, root=cache_root)
     # Since v0.5.3 entries go into cache/ast/, not the flat cache/ dir
-    cache_base = cache_root / "graphify-out" / "cache"
+    cache_base = cache_root / "graph3d-out" / "cache"
     assert len(list(cache_base.rglob("*.json"))) > 0
     clear_cache(cache_root)
     assert len(list(cache_base.rglob("*.json"))) == 0

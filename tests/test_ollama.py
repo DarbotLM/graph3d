@@ -1,7 +1,7 @@
-"""Tests for the Ollama backend additions in graphify/llm.py."""
+"""Tests for the Ollama backend additions in graph3d/llm.py."""
 from __future__ import annotations
 
-from graphify.llm import detect_backend, BACKENDS
+from graph3d.llm import detect_backend, BACKENDS
 
 
 def test_ollama_in_backends():
@@ -58,8 +58,8 @@ def test_ollama_api_key_sentinel(monkeypatch):
         "output_tokens": 10,
         "finish_reason": "stop",
     }
-    with patch("graphify.llm._call_openai_compat", return_value=fake_result) as mock_call:
-        from graphify.llm import extract_files_direct
+    with patch("graph3d.llm._call_openai_compat", return_value=fake_result) as mock_call:
+        from graph3d.llm import extract_files_direct
         with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
             f.write("x = 1\n")
             tmp = Path(f.name)

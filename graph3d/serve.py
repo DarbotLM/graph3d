@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
-from graphify.security import sanitize_label, check_graph_file_size_cap
-from graphify.build import edge_data
+from graph3d.security import sanitize_label, check_graph_file_size_cap
+from graph3d.build import edge_data
 
 try:
     import jieba as _jieba  # type: ignore[import-untyped]
@@ -37,7 +37,7 @@ def _load_graph(graph_path: str) -> nx.Graph:
         print(f"error: {exc}", file=sys.stderr)
         sys.exit(1)
     except json.JSONDecodeError as exc:
-        print(f"error: graph.json is corrupted ({exc}). Re-run /graphify to rebuild.", file=sys.stderr)
+        print(f"error: graph.json is corrupted ({exc}). Re-run /graph3d to rebuild.", file=sys.stderr)
         sys.exit(1)
 
 
@@ -351,7 +351,7 @@ def _subgraph_to_text(G: nx.Graph, nodes: set[str], edges: list[tuple], token_bu
         d = G.nodes[nid]
         # Every LLM-derived field passes through sanitize_label before being
         # concatenated into MCP tool output (F-010): an attacker who controls a
-        # corpus document can otherwise inject ANSI escapes, fake graphify-out
+        # corpus document can otherwise inject ANSI escapes, fake graph3d-out
         # log lines, or prompt-injection markup into the model's context via
         # source_file / source_location / community.
         line = (
@@ -472,7 +472,7 @@ def _filter_blank_stdin() -> None:
     sys.stdin = open(0, "r", closefd=False)
 
 
-def serve(graph_path: str = "graphify-out/graph.json") -> None:
+def serve(graph_path: str = "graph3d-out/graph.json") -> None:
     """Start the MCP server. Requires pip install mcp."""
     import threading
 
@@ -482,7 +482,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
         from mcp import types
         from mcp.types import AnyUrl
     except ImportError as e:
-        raise ImportError('mcp not installed. Run: pip install "graphifyy[mcp]"') from e
+        raise ImportError('mcp not installed. Run: pip install "graph3d[mcp]"') from e
 
     G = _load_graph(graph_path)
     communities = _communities_from_graph(G)
@@ -522,7 +522,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
             communities = _communities_from_graph(new_G)
             _reload_state["mtime_ns"], _reload_state["size"] = key
 
-    server = Server("graphify")
+    server = Server("graph3d")
 
     @server.list_tools()
     async def list_tools() -> list[types.Tool]:
@@ -724,7 +724,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
         return "\n".join(lines)
 
     def _tool_god_nodes(arguments: dict) -> str:
-        from graphify.analyze import god_nodes as _god_nodes
+        from graph3d.analyze import god_nodes as _god_nodes
         nodes = _god_nodes(G, top_n=int(arguments.get("top_n", 10)))
         lines = ["God nodes (most connected):"]
         lines += [f"  {i}. {n['label']} - {n['degree']} edges" for i, n in enumerate(nodes, 1)]
@@ -798,7 +798,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
         return prefix + f"Shortest path ({hops} hops):\n  " + " ".join(segments)
 
     def _tool_list_prs(arguments: dict) -> str:
-        from graphify.prs import fetch_prs, fetch_worktrees, format_prs_text, _detect_default_branch
+        from graph3d.prs import fetch_prs, fetch_worktrees, format_prs_text, _detect_default_branch
         repo = arguments.get("repo") or None
         base = arguments.get("base") or _detect_default_branch(repo)
         try:
@@ -811,7 +811,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
         return format_prs_text(prs, base)
 
     def _tool_get_pr_impact(arguments: dict) -> str:
-        from graphify.prs import fetch_pr_files, compute_pr_impact, _gh, _parse_ci
+        from graph3d.prs import fetch_pr_files, compute_pr_impact, _gh, _parse_ci
         number = int(arguments["pr_number"])
         repo = arguments.get("repo") or None
         # Use gh pr view directly — works for any base branch, not just the default
@@ -842,7 +842,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
 
     def _tool_triage_prs(arguments: dict) -> str:
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        from graphify.prs import fetch_prs, fetch_worktrees, fetch_pr_files, compute_pr_impact, _STATUS_ORDER, _detect_default_branch
+        from graph3d.prs import fetch_prs, fetch_worktrees, fetch_pr_files, compute_pr_impact, _STATUS_ORDER, _detect_default_branch
         repo = arguments.get("repo") or None
         base = arguments.get("base") or _detect_default_branch(repo)
         try:
@@ -896,7 +896,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
     }
 
     def _load_community_labels() -> dict[int, str]:
-        labels_path = Path(graph_path).parent / ".graphify_labels.json"
+        labels_path = Path(graph_path).parent / ".graph3d_labels.json"
         if labels_path.exists():
             try:
                 return {int(k): v for k, v in json.loads(labels_path.read_text(encoding="utf-8")).items()}
@@ -907,30 +907,30 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
     @server.list_resources()
     async def list_resources() -> list[types.Resource]:
         return [
-            types.Resource(uri=AnyUrl("graphify://report"), name="Graph Report", description="Full GRAPH_REPORT.md", mimeType="text/markdown"),
-            types.Resource(uri=AnyUrl("graphify://stats"), name="Graph Stats", description="Node/edge/community counts and confidence breakdown", mimeType="text/plain"),
-            types.Resource(uri=AnyUrl("graphify://god-nodes"), name="God Nodes", description="Top 10 most-connected nodes", mimeType="text/plain"),
-            types.Resource(uri=AnyUrl("graphify://surprises"), name="Surprising Connections", description="Cross-community surprising connections", mimeType="text/plain"),
-            types.Resource(uri=AnyUrl("graphify://audit"), name="Confidence Audit", description="EXTRACTED/INFERRED/AMBIGUOUS edge breakdown", mimeType="text/plain"),
-            types.Resource(uri=AnyUrl("graphify://questions"), name="Suggested Questions", description="Suggested questions for this codebase", mimeType="text/plain"),
+            types.Resource(uri=AnyUrl("graph3d://report"), name="Graph Report", description="Full GRAPH_REPORT.md", mimeType="text/markdown"),
+            types.Resource(uri=AnyUrl("graph3d://stats"), name="Graph Stats", description="Node/edge/community counts and confidence breakdown", mimeType="text/plain"),
+            types.Resource(uri=AnyUrl("graph3d://god-nodes"), name="God Nodes", description="Top 10 most-connected nodes", mimeType="text/plain"),
+            types.Resource(uri=AnyUrl("graph3d://surprises"), name="Surprising Connections", description="Cross-community surprising connections", mimeType="text/plain"),
+            types.Resource(uri=AnyUrl("graph3d://audit"), name="Confidence Audit", description="EXTRACTED/INFERRED/AMBIGUOUS edge breakdown", mimeType="text/plain"),
+            types.Resource(uri=AnyUrl("graph3d://questions"), name="Suggested Questions", description="Suggested questions for this codebase", mimeType="text/plain"),
         ]
 
     @server.read_resource()
     async def read_resource(uri: AnyUrl) -> str:
         _maybe_reload()
         uri_str = str(uri)
-        if uri_str == "graphify://report":
+        if uri_str == "graph3d://report":
             report_path = Path(graph_path).parent / "GRAPH_REPORT.md"
             if report_path.exists():
                 return report_path.read_text(encoding="utf-8")
-            return "GRAPH_REPORT.md not found. Run graphify extract first."
-        if uri_str == "graphify://stats":
+            return "GRAPH_REPORT.md not found. Run graph3d extract first."
+        if uri_str == "graph3d://stats":
             return _tool_graph_stats({})
-        if uri_str == "graphify://god-nodes":
+        if uri_str == "graph3d://god-nodes":
             return _tool_god_nodes({"top_n": 10})
-        if uri_str == "graphify://surprises":
+        if uri_str == "graph3d://surprises":
             try:
-                from graphify.analyze import surprising_connections
+                from graph3d.analyze import surprising_connections
                 surprises = surprising_connections(G, communities, top_n=10)
                 if not surprises:
                     return "No surprising connections found."
@@ -940,7 +940,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
                 return "\n".join(lines)
             except Exception as exc:
                 return f"Could not compute surprising connections: {exc}"
-        if uri_str == "graphify://audit":
+        if uri_str == "graph3d://audit":
             confs = [d.get("confidence", "EXTRACTED") for _, _, d in G.edges(data=True)]
             total = len(confs) or 1
             return (
@@ -949,9 +949,9 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
                 f"INFERRED: {confs.count('INFERRED')} ({round(confs.count('INFERRED')/total*100)}%)\n"
                 f"AMBIGUOUS: {confs.count('AMBIGUOUS')} ({round(confs.count('AMBIGUOUS')/total*100)}%)\n"
             )
-        if uri_str == "graphify://questions":
+        if uri_str == "graph3d://questions":
             try:
-                from graphify.analyze import suggest_questions
+                from graph3d.analyze import suggest_questions
                 community_labels = _load_community_labels()
                 questions = suggest_questions(G, communities, community_labels, top_n=10)
                 if not questions:
@@ -989,5 +989,5 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
 
 
 if __name__ == "__main__":
-    graph_path = sys.argv[1] if len(sys.argv) > 1 else "graphify-out/graph.json"
+    graph_path = sys.argv[1] if len(sys.argv) > 1 else "graph3d-out/graph.json"
     serve(graph_path)

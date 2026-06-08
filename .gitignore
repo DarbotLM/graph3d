@@ -12,10 +12,10 @@ build/
 .ruff_cache/
 *.so
 *.egg
-.graphify/
-graphify-out/
-.graphify_*.json
-.graphify_python
+.graph3d/
+graph3d-out/
+.graph3d_*.json
+.graph3d_python
 .claude/
 skills/
 docs/superpowers/

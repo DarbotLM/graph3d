@@ -1,4 +1,4 @@
-"""Tests for graphify/security.py - URL validation, safe fetch, path guards, label sanitisation."""
+"""Tests for graph3d/security.py - URL validation, safe fetch, path guards, label sanitisation."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from graphify.security import (
+from graph3d.security import (
     check_graph_file_size_cap,
     sanitize_label,
     sanitize_metadata,
@@ -79,7 +79,7 @@ def test_safe_fetch_rejects_ftp_url():
 
 def test_safe_fetch_returns_bytes(tmp_path):
     mock_resp = _make_mock_response(b"hello world")
-    with patch("graphify.security._build_opener") as mock_opener_fn:
+    with patch("graph3d.security._build_opener") as mock_opener_fn:
         mock_opener = MagicMock()
         mock_opener.open.return_value = mock_resp
         mock_opener_fn.return_value = mock_opener
@@ -88,7 +88,7 @@ def test_safe_fetch_returns_bytes(tmp_path):
 
 def test_safe_fetch_raises_on_non_2xx():
     mock_resp = _make_mock_response(b"Not Found", status=404)
-    with patch("graphify.security._build_opener") as mock_opener_fn:
+    with patch("graph3d.security._build_opener") as mock_opener_fn:
         mock_opener = MagicMock()
         mock_opener.open.return_value = mock_resp
         mock_opener_fn.return_value = mock_opener
@@ -106,7 +106,7 @@ def test_safe_fetch_raises_on_size_exceeded():
     # Return the chunk twice so total > max_bytes=65536
     mock_resp.read.side_effect = [big_chunk, big_chunk, b""]
 
-    with patch("graphify.security._build_opener") as mock_opener_fn:
+    with patch("graph3d.security._build_opener") as mock_opener_fn:
         mock_opener = MagicMock()
         mock_opener.open.return_value = mock_resp
         mock_opener_fn.return_value = mock_opener
@@ -121,7 +121,7 @@ def test_safe_fetch_raises_on_size_exceeded():
 def test_safe_fetch_text_decodes_utf8():
     content = "héllo wörld".encode("utf-8")
     mock_resp = _make_mock_response(content)
-    with patch("graphify.security._build_opener") as mock_opener_fn:
+    with patch("graph3d.security._build_opener") as mock_opener_fn:
         mock_opener = MagicMock()
         mock_opener.open.return_value = mock_resp
         mock_opener_fn.return_value = mock_opener
@@ -131,7 +131,7 @@ def test_safe_fetch_text_decodes_utf8():
 def test_safe_fetch_text_replaces_bad_bytes():
     bad = b"hello \xff world"
     mock_resp = _make_mock_response(bad)
-    with patch("graphify.security._build_opener") as mock_opener_fn:
+    with patch("graph3d.security._build_opener") as mock_opener_fn:
         mock_opener = MagicMock()
         mock_opener.open.return_value = mock_resp
         mock_opener_fn.return_value = mock_opener
@@ -146,7 +146,7 @@ def test_safe_fetch_text_replaces_bad_bytes():
 # ---------------------------------------------------------------------------
 
 def test_validate_graph_path_allows_inside_base(tmp_path):
-    base = tmp_path / "graphify-out"
+    base = tmp_path / "graph3d-out"
     base.mkdir()
     graph = base / "graph.json"
     graph.write_text("{}")
@@ -154,19 +154,19 @@ def test_validate_graph_path_allows_inside_base(tmp_path):
     assert result == graph.resolve()
 
 def test_validate_graph_path_blocks_traversal(tmp_path):
-    base = tmp_path / "graphify-out"
+    base = tmp_path / "graph3d-out"
     base.mkdir()
-    evil = tmp_path / "graphify-out" / ".." / "etc_passwd"
+    evil = tmp_path / "graph3d-out" / ".." / "etc_passwd"
     with pytest.raises(ValueError, match="escapes"):
         validate_graph_path(str(evil), base=base)
 
 def test_validate_graph_path_requires_base_exists(tmp_path):
-    base = tmp_path / "graphify-out"  # not created
+    base = tmp_path / "graph3d-out"  # not created
     with pytest.raises(ValueError, match="does not exist"):
         validate_graph_path(str(base / "graph.json"), base=base)
 
 def test_validate_graph_path_raises_if_file_missing(tmp_path):
-    base = tmp_path / "graphify-out"
+    base = tmp_path / "graph3d-out"
     base.mkdir()
     with pytest.raises(FileNotFoundError):
         validate_graph_path(str(base / "missing.json"), base=base)
@@ -212,7 +212,7 @@ def test_graph_size_cap_under_limit_returns_none(tmp_path):
 
 
 def test_graph_size_cap_over_limit_raises(monkeypatch, tmp_path):
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 16)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 16)
     p = tmp_path / "graph.json"
     p.write_text('{"nodes": [], "links": [], "padding": "x" * 50}', encoding="utf-8")
     with pytest.raises(ValueError, match="exceeds"):
@@ -220,7 +220,7 @@ def test_graph_size_cap_over_limit_raises(monkeypatch, tmp_path):
 
 
 def test_graph_size_cap_error_message_includes_size_and_cap(monkeypatch, tmp_path):
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 8)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 8)
     p = tmp_path / "graph.json"
     p.write_text("AAAAAAAAAAAAAAAA", encoding="utf-8")  # 16 bytes
     with pytest.raises(ValueError) as excinfo:
@@ -236,9 +236,9 @@ def test_graph_size_cap_at_boundary_passes(monkeypatch, tmp_path):
     p = tmp_path / "graph.json"
     payload = "A" * 32
     p.write_text(payload, encoding="utf-8")
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 32)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 32)
     assert check_graph_file_size_cap(p) is None
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 31)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 31)
     with pytest.raises(ValueError):
         check_graph_file_size_cap(p)
 

@@ -3,11 +3,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from graphify.callflow_html import derive_sections_from_communities, write_callflow_html
+from graph3d.callflow_html import derive_sections_from_communities, write_callflow_html
 
 
-def _make_graphify_out(tmp_path: Path) -> Path:
-    out = tmp_path / "graphify-out"
+def _make_graph3d_out(tmp_path: Path) -> Path:
+    out = tmp_path / "graph3d-out"
     out.mkdir()
     graph = {
         "directed": False,
@@ -28,7 +28,7 @@ def _make_graphify_out(tmp_path: Path) -> Path:
         "built_at_commit": "abcdef123456",
     }
     (out / "graph.json").write_text(json.dumps(graph), encoding="utf-8")
-    (out / ".graphify_labels.json").write_text(
+    (out / ".graph3d_labels.json").write_text(
         json.dumps({"0": "Runtime", "1": "Export"}),
         encoding="utf-8",
     )
@@ -50,11 +50,11 @@ def _make_graphify_out(tmp_path: Path) -> Path:
 
 
 def test_write_callflow_html_creates_file_and_uses_report(tmp_path):
-    out = _make_graphify_out(tmp_path)
+    out = _make_graph3d_out(tmp_path)
 
     html_path = write_callflow_html(
         tmp_path,
-        output="graphify-out/callflow.html",
+        output="graph3d-out/callflow.html",
         max_sections=4,
     )
 
@@ -69,17 +69,17 @@ def test_write_callflow_html_creates_file_and_uses_report(tmp_path):
 
 
 def test_export_callflow_html_cli_creates_file(tmp_path):
-    _make_graphify_out(tmp_path)
+    _make_graph3d_out(tmp_path)
 
     result = subprocess.run(
         [
             sys.executable,
             "-m",
-            "graphify",
+            "graph3d",
             "export",
             "callflow-html",
             "--output",
-            "graphify-out/from-cli.html",
+            "graph3d-out/from-cli.html",
             "--max-sections",
             "4",
         ],
@@ -89,14 +89,14 @@ def test_export_callflow_html_cli_creates_file(tmp_path):
     )
 
     assert result.returncode == 0, result.stderr
-    html_path = tmp_path / "graphify-out" / "from-cli.html"
+    html_path = tmp_path / "graph3d-out" / "from-cli.html"
     assert html_path.exists()
     assert "callflow HTML written" in result.stdout
 
 
 def test_export_callflow_html_cli_accepts_positional_graph_path(tmp_path):
-    _make_graphify_out(tmp_path)
-    external_out = tmp_path / "GitNexus" / "graphify-out"
+    _make_graph3d_out(tmp_path)
+    external_out = tmp_path / "GitNexus" / "graph3d-out"
     external_out.mkdir(parents=True)
     graph = {
         "directed": False,
@@ -112,7 +112,7 @@ def test_export_callflow_html_cli_accepts_positional_graph_path(tmp_path):
         "hyperedges": [],
     }
     (external_out / "graph.json").write_text(json.dumps(graph), encoding="utf-8")
-    (external_out / ".graphify_labels.json").write_text(json.dumps({"0": "External Runtime", "1": "External Export"}), encoding="utf-8")
+    (external_out / ".graph3d_labels.json").write_text(json.dumps({"0": "External Runtime", "1": "External Export"}), encoding="utf-8")
     (external_out / "GRAPH_REPORT.md").write_text(
         "\n".join(
             [
@@ -132,7 +132,7 @@ def test_export_callflow_html_cli_accepts_positional_graph_path(tmp_path):
         [
             sys.executable,
             "-m",
-            "graphify",
+            "graph3d",
             "export",
             "callflow-html",
             str(external_out / "graph.json"),
@@ -156,9 +156,9 @@ def test_export_callflow_html_cli_accepts_positional_graph_path(tmp_path):
 
 def test_derive_sections_groups_by_architecture_keywords():
     nodes = [
-        {"id": "extract_py", "label": "extract_python", "source_file": "graphify/extract.py", "community": 0},
-        {"id": "extract_js", "label": "extract_js", "source_file": "graphify/extract.py", "community": 0},
-        {"id": "to_html", "label": "to_html", "source_file": "graphify/export.py", "community": 1},
+        {"id": "extract_py", "label": "extract_python", "source_file": "graph3d/extract.py", "community": 0},
+        {"id": "extract_js", "label": "extract_js", "source_file": "graph3d/extract.py", "community": 0},
+        {"id": "to_html", "label": "to_html", "source_file": "graph3d/export.py", "community": 1},
         {"id": "test_html", "label": "test_export_html", "source_file": "tests/test_export.py", "community": 2},
     ]
 
@@ -174,14 +174,14 @@ def test_load_graph_rejects_oversized_file(monkeypatch, tmp_path):
     """#F4: callflow_html.load_graph must refuse to read a graph.json that
     exceeds the size cap (SystemExit via translated ValueError)."""
     import pytest
-    from graphify.callflow_html import load_graph
+    from graph3d.callflow_html import load_graph
 
     graph_path = tmp_path / "graph.json"
     graph_path.write_text(
         json.dumps({"nodes": [], "links": []}),
         encoding="utf-8",
     )
-    monkeypatch.setattr("graphify.security._MAX_GRAPH_FILE_BYTES", 8)
+    monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 8)
     with pytest.raises(SystemExit) as excinfo:
         load_graph(graph_path)
     assert "exceeds" in str(excinfo.value)
