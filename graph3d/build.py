@@ -142,7 +142,7 @@ def build_from_json(extraction: dict, *, directed: bool = False, root: str | Pat
         if node.get("file_type") in (None, ""):
             node["file_type"] = "concept"
         ft = node.get("file_type", "")
-        if ft and ft not in {"code", "document", "paper", "image", "rationale", "concept"}:
+        if ft and ft not in {"code", "document", "paper", "image", "rationale", "concept", "schema", "data"}:
             node["file_type"] = _FILE_TYPE_SYNONYMS.get(ft, "concept")
 
     errors = validate_extraction(extraction)

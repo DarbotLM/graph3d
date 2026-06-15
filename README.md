@@ -85,6 +85,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Recommended (uv puts graph3d on PATH automatically):
 uv tool install graph3d
 
+# npm/npx launcher (bootstraps the Python package into a managed venv on first run):
+npm install -g graph3d
+npx graph3d --help
+
 # Alternatives:
 pipx install graph3d
 pip install graph3d  # may need PATH setup — see note below
@@ -115,6 +119,8 @@ for example `graph3d claude install --project` or `graph3d codex install --proje
 > **PowerShell note:** Use `graph3d .` not `/graph3d .` — the leading slash is a path separator in PowerShell.
 
 > **`graph3d: command not found`?** Use `uv tool install graph3d` or `pipx install graph3d` — both put the CLI on PATH automatically. With plain `pip`, add `~/.local/bin` (Linux) or `~/Library/Python/3.x/bin` (Mac) to your PATH, or run `python -m graph3d`.
+
+> **npm/npx note:** The npm package is a Node launcher for the Python CLI. It requires Python 3.10+ and creates a managed Python environment under `~/.graph3d/npm-python/<version>` if `graph3d` is not already installed for the selected Python. Set `GRAPH3D_PYTHON=/path/to/python` to force a specific Python environment.
 
 > **Avoid `pip install` on Mac/Windows** if possible. The skill resolves Python at runtime from `graph3d-out/.graph3d_python`; if that points to a different environment than where `pip` installed the package, you'll get `ModuleNotFoundError: No module named 'graph3d'`. `uv tool install` and `pipx install` isolate the package in their own env and avoid this entirely.
 

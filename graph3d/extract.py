@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable, Any
 from .cache import load_cached, save_cached
 from .mcp_ingest import extract_mcp_config, is_mcp_config_path
+from .schema_paths import extract_json_schema_paths, extract_sqlite_schema
 
 _RECURSION_LIMIT = 10_000
 
@@ -9544,6 +9545,11 @@ def extract_json(path: Path) -> dict:
     if doc.type == "object":
         walk_object(doc, file_nid, None, 0, [0])
 
+    schema_fragment = extract_json_schema_paths(path, file_node_id=file_nid, source_file=str_path)
+    if schema_fragment.get("nodes") or schema_fragment.get("edges"):
+        nodes.extend(schema_fragment.get("nodes", []))
+        edges.extend(schema_fragment.get("edges", []))
+
     return {"nodes": nodes, "edges": edges}
 
 
@@ -10123,6 +10129,9 @@ _DISPATCH: dict[str, Any] = {
     ".sh": extract_bash,
     ".bash": extract_bash,
     ".json": extract_json,
+    ".db": extract_sqlite_schema,
+    ".sqlite": extract_sqlite_schema,
+    ".sqlite3": extract_sqlite_schema,
     ".dm": extract_dm,
     ".dme": extract_dm,
     ".dmi": extract_dmi,

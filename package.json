@@ -1,0 +1,67 @@
+{
+  "name": "graph3d",
+  "version": "0.8.26",
+  "description": "AI coding assistant skill and CLI that turns folders of code, docs, papers, images, or videos into queryable knowledge graphs.",
+  "license": "MIT",
+  "homepage": "https://github.com/DarbotLM/graph3d#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DarbotLM/graph3d.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DarbotLM/graph3d/issues"
+  },
+  "funding": {
+    "url": "https://github.com/sponsors/DarbotLM"
+  },
+  "type": "commonjs",
+  "bin": {
+    "graph3d": "./bin/graph3d.js"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "graph3d/*.py",
+    "graph3d/skill*.md",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+    "ARCHITECTURE.md",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "node scripts/validate-npm-package.mjs",
+    "test": "node bin/graph3d.js --version",
+    "smoke": "npm run build && npm test",
+    "pack:dry-run": "npm pack --dry-run",
+    "npx:smoke": "node scripts/npx-smoke.mjs",
+    "validate": "npm run smoke && npm run pack:dry-run && npm run npx:smoke"
+  },
+  "keywords": [
+    "graph3d",
+    "knowledge-graph",
+    "graphrag",
+    "rag",
+    "ai-coding-assistant",
+    "claude-code",
+    "codex",
+    "opencode",
+    "cursor",
+    "gemini-cli",
+    "aider",
+    "mcp",
+    "obsidian",
+    "tree-sitter",
+    "community-detection",
+    "npx"
+  ],
+  "engines": {
+    "node": ">=18.18.0",
+    "npm": ">=9.0.0"
+  },
+  "packageManager": "npm@11.7.0",
+  "publishConfig": {
+    "provenance": true
+  }
+}
