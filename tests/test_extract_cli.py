@@ -121,3 +121,52 @@ def test_extract_succeeds_when_at_least_one_chunk_completes(
     assert (out_dir / "graph3d-out" / "graph.json").exists(), (
         "graph.json must be written on the happy path"
     )
+
+
+def test_extract_profile_flag_passes_profile_to_detection(monkeypatch, tmp_path):
+    """The CLI should wire --profile to detect() without changing the rest of extract."""
+    out_dir = tmp_path / "out"
+    seen: dict[str, object] = {}
+
+    def _fake_detect(root, **kwargs):
+        seen["root"] = root
+        seen["kwargs"] = kwargs
+        return {
+            "files": {
+                "code": [],
+                "document": [],
+                "paper": [],
+                "image": [],
+                "video": [],
+            },
+            "total_files": 0,
+            "total_words": 0,
+        }
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-fake-key")
+    monkeypatch.setattr("graph3d.detect.detect", _fake_detect)
+    monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
+    monkeypatch.setattr(
+        mainmod.sys,
+        "argv",
+        [
+            "graph3d",
+            "extract",
+            str(tmp_path),
+            "--backend",
+            "claude",
+            "--profile",
+            "PRODUCT",
+            "--out",
+            str(out_dir),
+            "--no-cluster",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        mainmod.main()
+
+    assert exc_info.value.code == 0
+    assert seen["root"] == tmp_path.resolve()
+    assert seen["kwargs"]["profile"] == "product"
+    assert (out_dir / "graph3d-out" / "graph.json").exists()

@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.3.x   | Yes       |
-| < 0.3   | No        |
+| 0.8.x   | Yes       |
+| < 0.8   | No        |
 
 ## Reporting a Vulnerability
 
@@ -22,7 +22,7 @@ We will acknowledge receipt within 48 hours and aim to release a fix within 7 da
 
 ## Security Model
 
-graph3d is a **local development tool**. It runs as a Claude Code skill and optionally as a local MCP stdio server. It makes no network calls during graph analysis - only during `ingest` (explicit URL fetch by the user).
+graph3d is a **local development tool**. It runs as a Claude Code skill and optionally as a local MCP stdio server. Network calls depend on which commands and extras are in use — see the Optional network calls section below for the full list.
 
 ### Threat Surface
 
@@ -32,7 +32,7 @@ graph3d is a **local development tool**. It runs as a Claude Code skill and opti
 | Oversized downloads | `safe_fetch()` streams responses and aborts at 50 MB. `safe_fetch_text()` aborts at 10 MB. |
 | Non-2xx HTTP responses | `safe_fetch()` raises `HTTPError` on non-2xx status codes - error pages are not silently treated as content. |
 | Path traversal in MCP server | `security.validate_graph_path()` resolves paths and requires them to be inside `graph3d-out/`. Also requires the `graph3d-out/` directory to exist. |
-| XSS in graph HTML output | `security.sanitize_label()` strips control characters, caps at 256 chars, and HTML-escapes all node labels and edge titles before pyvis embeds them. |
+| XSS in graph HTML output | `security.sanitize_label()` strips control characters and caps at 256 chars. Export callers (e.g. `export.py`) then apply `html.escape()` before pyvis embeds labels in HTML. The two steps are intentionally separate: `sanitize_label` is safe for JSON/plain-text; HTML contexts require the additional escape at the call site. |
 | Prompt injection via node labels | `sanitize_label()` also applied to MCP text output - node labels from user-controlled source files cannot break the text format returned to agents. |
 | YAML frontmatter injection | `_yaml_str()` escapes backslashes, double quotes, and newlines before embedding user-controlled strings (webpage titles, query questions) in YAML frontmatter. |
 | Encoding crashes on source files | All tree-sitter byte slices decoded with `errors="replace"` - non-UTF-8 source files degrade gracefully instead of crashing extraction. |
@@ -48,6 +48,15 @@ graph3d is a **local development tool**. It runs as a Claude Code skill and opti
 
 ### Optional network calls
 
-- `ingest` subcommand: fetches URLs explicitly provided by the user
-- PDF extraction: reads local files only (pypdf does not make network calls)
-- watch mode: local filesystem events only (watchdog does not make network calls)
+The following operations make outbound network calls. All other operations (AST extraction, clustering, MCP queries, watch mode) are local.
+
+| Operation | Network target |
+|-----------|---------------|
+| `ingest` / `add` subcommand | URLs explicitly provided by the user; goes through `safe_fetch()` |
+| Headless `extract` for docs, PDFs, and images | LLM provider API (Anthropic, Gemini, OpenAI, DeepSeek, Moonshot/Kimi, or AWS Bedrock depending on configured backend) |
+| `extract --google-workspace` | Google Drive API via the `gws` CLI (opt-in, requires explicit auth) |
+| `extract` with `[video]` extra — YouTube or remote video URLs | yt-dlp downloads from the video host; transcription is then done locally with faster-whisper |
+| `prs` command | GitHub API via the `gh` CLI (requires `gh auth login`) |
+| `prs --triage` | GitHub API via `gh` plus the configured LLM provider for ranking |
+| PDF extraction | Local files only (pypdf makes no network calls) |
+| Watch mode | Local filesystem events only (watchdog makes no network calls) |

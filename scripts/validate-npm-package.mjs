@@ -17,6 +17,8 @@ const required = [
   ["bin.graph3d", pkg.bin?.graph3d === "./bin/graph3d.js"],
   ["files includes graph3d Python modules", pkg.files?.includes("graph3d/*.py")],
   ["files includes graph3d skill files", pkg.files?.includes("graph3d/skill*.md")],
+  ["files includes docs", pkg.files?.includes("docs/*.md")],
+  ["files includes specs", pkg.files?.includes("docs/specs/*.md")],
   ["files includes pyproject.toml", pkg.files?.includes("pyproject.toml")],
   ["build script", Boolean(pkg.scripts?.build)],
   ["npx smoke script", Boolean(pkg.scripts?.["npx:smoke"])],

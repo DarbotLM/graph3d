@@ -15,6 +15,7 @@ from networkx.readwrite import json_graph
 from graph3d.security import sanitize_label
 from graph3d.analyze import _node_community_map
 from graph3d.build import edge_data
+from graph3d.validate import GRAPH3D_EXPORT_SCHEMA_KIND, GRAPH3D_EXPORT_SCHEMA_VERSION
 
 
 # Artifacts worth preserving across rebuilds (non-regenerable without LLM or curation).
@@ -479,6 +480,117 @@ def _git_head() -> str | None:
         return None
 
 
+def _source_document_summary(nodes: list[dict], links: list[dict]) -> dict:
+    """Summarize source_file and file_type references for graph.json metadata."""
+    by_source: dict[str, dict] = {}
+    file_type_counts: Counter[str] = Counter()
+
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        source_file = node.get("source_file")
+        file_type = node.get("file_type")
+        if file_type:
+            file_type_counts[str(file_type)] += 1
+        if not source_file:
+            continue
+        source_key = str(source_file)
+        entry = by_source.setdefault(
+            source_key,
+            {
+                "source_file": source_key,
+                "file_types": {},
+                "node_count": 0,
+                "link_count": 0,
+            },
+        )
+        entry["node_count"] += 1
+        if file_type:
+            type_key = str(file_type)
+            entry["file_types"][type_key] = entry["file_types"].get(type_key, 0) + 1
+
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        source_file = link.get("source_file")
+        if not source_file:
+            continue
+        source_key = str(source_file)
+        entry = by_source.setdefault(
+            source_key,
+            {
+                "source_file": source_key,
+                "file_types": {},
+                "node_count": 0,
+                "link_count": 0,
+            },
+        )
+        entry["link_count"] += 1
+
+    documents = [
+        {
+            **entry,
+            "file_types": dict(sorted(entry["file_types"].items())),
+        }
+        for _, entry in sorted(by_source.items())
+    ]
+    return {
+        "source_file_count": len(by_source),
+        "source_files": sorted(by_source),
+        "file_type_counts": dict(sorted(file_type_counts.items())),
+        "documents": documents,
+    }
+
+
+def _validation_summary(data: dict) -> dict:
+    """Return non-failing structural validation counts for graph.json metadata."""
+    nodes = data.get("nodes", [])
+    links = data.get("links") if "links" in data else data.get("edges", [])
+    hyperedges = data.get("hyperedges", [])
+
+    node_ids = {node.get("id") for node in nodes if isinstance(node, dict)}
+    iterable_links = links if isinstance(links, list) else []
+    dangling = 0
+    for link in iterable_links:
+        if not isinstance(link, dict):
+            continue
+        if link.get("source") not in node_ids or link.get("target") not in node_ids:
+            dangling += 1
+
+    return {
+        "node_count": len(nodes) if isinstance(nodes, list) else 0,
+        "link_count": len(links) if isinstance(links, list) else 0,
+        "hyperedge_count": len(hyperedges) if isinstance(hyperedges, list) else 0,
+        "dangling_link_count": dangling,
+    }
+
+
+def _attach_schema_core_metadata(data: dict, built_at_commit: str | None) -> None:
+    """Attach graph3d schema-core metadata while preserving NetworkX node-link shape."""
+    links = data.get("links") if "links" in data else data.get("edges", [])
+    nodes = data.get("nodes", [])
+    source_documents = _source_document_summary(
+        nodes if isinstance(nodes, list) else [],
+        links if isinstance(links, list) else [],
+    )
+
+    schema = {
+        "kind": GRAPH3D_EXPORT_SCHEMA_KIND,
+        "version": GRAPH3D_EXPORT_SCHEMA_VERSION,
+    }
+    metadata = {
+        "schema_kind": GRAPH3D_EXPORT_SCHEMA_KIND,
+        "schema_version": GRAPH3D_EXPORT_SCHEMA_VERSION,
+        "source_documents": source_documents,
+        "validation": _validation_summary(data),
+    }
+    if built_at_commit:
+        metadata["built_at_commit"] = built_at_commit
+
+    data["graph3d_schema"] = schema
+    data["graph3d_metadata"] = metadata
+
+
 def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *, force: bool = False, built_at_commit: str | None = None) -> bool:
     # Safety check: refuse to silently shrink an existing graph (#479)
     existing_path = Path(output_path)
@@ -527,6 +639,7 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
     commit = built_at_commit if built_at_commit is not None else _git_head()
     if commit:
         data["built_at_commit"] = commit
+    _attach_schema_core_metadata(data, commit)
     with open(output_path, "w", encoding="utf-8") as f:  # nosec
         json.dump(data, f, indent=2)
     return True

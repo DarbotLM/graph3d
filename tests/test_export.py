@@ -4,6 +4,11 @@ from pathlib import Path
 from graph3d.build import build_from_json
 from graph3d.cluster import cluster
 from graph3d.export import to_json, to_cypher, to_graphml, to_html, to_canvas
+from graph3d.validate import (
+    GRAPH3D_EXPORT_SCHEMA_KIND,
+    GRAPH3D_EXPORT_SCHEMA_VERSION,
+    validate_graph_export,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -37,6 +42,53 @@ def test_to_json_nodes_have_community():
         data = json.loads(out.read_text())
         for node in data["nodes"]:
             assert "community" in node
+
+
+def test_to_json_adds_schema_core_metadata():
+    G = make_graph()
+    communities = cluster(G)
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "graph.json"
+        to_json(G, communities, str(out), built_at_commit="abc123")
+        data = json.loads(out.read_text())
+
+    assert data["built_at_commit"] == "abc123"
+    assert data["graph3d_schema"] == {
+        "kind": GRAPH3D_EXPORT_SCHEMA_KIND,
+        "version": GRAPH3D_EXPORT_SCHEMA_VERSION,
+    }
+
+    metadata = data["graph3d_metadata"]
+    assert metadata["schema_kind"] == GRAPH3D_EXPORT_SCHEMA_KIND
+    assert metadata["schema_version"] == GRAPH3D_EXPORT_SCHEMA_VERSION
+    assert metadata["built_at_commit"] == "abc123"
+    assert metadata["source_documents"]["source_files"] == ["model.py", "paper.md"]
+    assert metadata["source_documents"]["source_file_count"] == 2
+    assert metadata["source_documents"]["file_type_counts"] == {"code": 3, "document": 1}
+    assert metadata["validation"]["node_count"] == len(data["nodes"])
+    assert metadata["validation"]["link_count"] == len(data["links"])
+    assert validate_graph_export(data) == []
+
+
+def test_to_json_schema_core_keeps_node_link_compatible():
+    from networkx.readwrite import json_graph
+
+    G = make_graph()
+    communities = cluster(G)
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "graph.json"
+        to_json(G, communities, str(out), built_at_commit="abc123")
+        data = json.loads(out.read_text())
+
+    try:
+        roundtrip = json_graph.node_link_graph(data, edges="links")
+    except TypeError:
+        roundtrip = json_graph.node_link_graph(data)
+
+    assert "nodes" in data
+    assert "links" in data
+    assert roundtrip.number_of_nodes() == G.number_of_nodes()
+    assert roundtrip.number_of_edges() == G.number_of_edges()
 
 def test_to_cypher_creates_file():
     G = make_graph()

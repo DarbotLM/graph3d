@@ -3,6 +3,16 @@ from graph3d.detect import classify_file, count_words, detect, detect_incrementa
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
+
+def _relative_detected(result: dict, root: Path) -> set[str]:
+    root = root.resolve()
+    paths = set()
+    for file_list in result["files"].values():
+        for file_name in file_list:
+            paths.add(Path(file_name).resolve().relative_to(root).as_posix().lower())
+    return paths
+
+
 def test_classify_python():
     assert classify_file(Path("foo.py")) == FileType.CODE
 
@@ -764,6 +774,118 @@ def test_detect_extra_excludes_pattern(tmp_path):
     assert any("main.py" in f for f in code)
     assert not any("secret.py" in f for f in code)
     assert not any("legacy" in f for f in code)
+
+
+def test_detect_product_profile_excludes_non_product_layers(tmp_path):
+    """Product profile keeps source/docs/config while excluding tests, worked, and output."""
+    source = tmp_path / "graph3d"
+    source.mkdir()
+    (source / "detect.py").write_text("x = 1")
+    (tmp_path / "README.md").write_text("# Product")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "how-it-works.md").write_text("# How it works")
+    translations = docs / "translations"
+    translations.mkdir()
+    (translations / "README.fr-FR.md").write_text("# Traduction")
+    (tmp_path / "package.json").write_text('{"name": "demo"}')
+    (tmp_path / "client.generated.py").write_text("x = 1")
+    tests = tmp_path / "tests" / "fixtures"
+    tests.mkdir(parents=True)
+    (tests / "sample.py").write_text("x = 1")
+    worked = tmp_path / "worked" / "example"
+    worked.mkdir(parents=True)
+    (worked / "review.md").write_text("# Worked")
+    memory = tmp_path / "graph3d-out" / "memory"
+    memory.mkdir(parents=True)
+    (memory / "note.md").write_text("# Session")
+
+    result = detect(tmp_path, profile="product")
+    rel = _relative_detected(result, tmp_path)
+
+    assert result["profile"] == "product"
+    assert "graph3d/detect.py" in rel
+    assert "readme.md" in rel
+    assert "docs/how-it-works.md" in rel
+    assert "package.json" in rel
+    assert "client.generated.py" not in rel
+    assert not any(path.startswith("tests/") for path in rel)
+    assert not any(path.startswith("worked/") for path in rel)
+    assert not any(path.startswith("graph3d-out/") for path in rel)
+    assert not any(path.startswith("docs/translations/") for path in rel)
+
+
+def test_detect_tests_profile_focuses_tests_and_fixtures(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "app.py").write_text("x = 1")
+    tests = tmp_path / "tests" / "fixtures"
+    tests.mkdir(parents=True)
+    (tmp_path / "tests" / "test_app.py").write_text("def test_app(): pass")
+    (tests / "sample.json").write_text('{"name": "fixture"}')
+    root_fixtures = tmp_path / "fixtures"
+    root_fixtures.mkdir()
+    (root_fixtures / "notes.md").write_text("# Fixture notes")
+
+    result = detect(tmp_path, profile="tests")
+    rel = _relative_detected(result, tmp_path)
+
+    assert result["profile"] == "tests"
+    assert "tests/test_app.py" in rel
+    assert "tests/fixtures/sample.json" in rel
+    assert "fixtures/notes.md" in rel
+    assert "src/app.py" not in rel
+
+
+def test_detect_schemas_profile_includes_schema_sql_mcp_and_api_files(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "app.py").write_text("x = 1")
+    api = tmp_path / "api"
+    api.mkdir()
+    (api / "openapi.yaml").write_text("openapi: 3.1.0\n")
+    schema_dir = tmp_path / "config" / "schema"
+    schema_dir.mkdir(parents=True)
+    (schema_dir / "session.schema.json").write_text('{"type": "object"}')
+    fixtures = tmp_path / "tests" / "fixtures"
+    fixtures.mkdir(parents=True)
+    (fixtures / "sample_schema_qualified.sql").write_text("CREATE TABLE sessions(id TEXT);")
+    (tmp_path / "sample.mcp.json").write_text('{"tools": []}')
+
+    result = detect(tmp_path, profile="schemas")
+    rel = _relative_detected(result, tmp_path)
+
+    assert result["profile"] == "schemas"
+    assert "api/openapi.yaml" in rel
+    assert "config/schema/session.schema.json" in rel
+    assert "tests/fixtures/sample_schema_qualified.sql" in rel
+    assert "sample.mcp.json" in rel
+    assert "src/app.py" not in rel
+
+
+def test_detect_all_profile_matches_legacy_full_repo_layers(tmp_path):
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / "app.py").write_text("x = 1")
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_app.py").write_text("def test_app(): pass")
+    worked = tmp_path / "worked"
+    worked.mkdir()
+    (worked / "review.md").write_text("# Worked")
+    memory = tmp_path / "graph3d-out" / "memory"
+    memory.mkdir(parents=True)
+    (memory / "note.md").write_text("# Session")
+
+    legacy = _relative_detected(detect(tmp_path), tmp_path)
+    all_profile = detect(tmp_path, profile="all")
+    rel = _relative_detected(all_profile, tmp_path)
+
+    assert all_profile["profile"] == "all"
+    assert rel == legacy
+    assert "tests/test_app.py" in rel
+    assert "worked/review.md" in rel
+    assert "graph3d-out/memory/note.md" in rel
 
 
 # ---------------------------------------------------------------------------

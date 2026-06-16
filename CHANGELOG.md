@@ -2,6 +2,17 @@
 
 Full release notes with details on each version: [GitHub Releases](https://github.com/DarbotLM/graph3d/releases)
 
+## 0.8.27 (2026-06-15)
+
+- Feat: schema-path extraction for JSON Schema/API-style files, with global schema terminal and pattern nodes for cross-family correlation.
+- Feat: SQLite database ingestion for `.db`, `.sqlite`, and `.sqlite3` using read-only immutable stdlib `sqlite3`, including table, column, index, view, and bounded row-content nodes.
+- Feat: compatible `graph3d_schema` and `graph3d_metadata` extensions in `graph.json`, including source document summaries, validation counts, and schema version metadata.
+- Feat: corpus profiles for detection (`product`, `tests`, `worked`, `session`, `schemas`, `all`) plus `graph3d extract --profile`.
+- Feat: extractor registry extension points for suffix and filename-predicate extractors, preserving existing dispatch behavior.
+- Feat: opt-in `multigraph=True` build path for preserving parallel same-endpoint edges with stable keys.
+- Fix: deduplication now degrades to a bounded pairwise fuzzy fallback when `datasketch` or its transitive numeric dependencies fail to import.
+- Docs: refreshed security, architecture, test, SDK, npm, merge-driver, language-count, and translation navigation docs for the current release.
+
 ## 0.8.26 (2026-05-30)
 
 - Feat: `find_import_cycles(G)` in `analyze.py` detects file-level circular import dependencies — collapses symbol graph to file-level directed import graph, finds simple cycles via Johnson's algorithm, deduplicates rotations, renders `## Import Cycles` section in `GRAPH_REPORT.md` (#961)

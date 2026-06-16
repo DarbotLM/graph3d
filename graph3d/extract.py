@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Any
 from .cache import load_cached, save_cached
+from .extractor_registry import ExtractorRegistry
 from .mcp_ingest import extract_mcp_config, is_mcp_config_path
 from .schema_paths import extract_json_schema_paths, extract_sqlite_schema
 
@@ -10146,16 +10147,64 @@ _DISPATCH: dict[str, Any] = {
 }
 
 
+def _is_blade_php_path(path: Path) -> bool:
+    return path.name.endswith(".blade.php")
+
+
+_EXTRACTOR_REGISTRY = ExtractorRegistry(_DISPATCH)
+_EXTRACTOR_REGISTRY.register_filename_predicate(
+    _is_blade_php_path,
+    extract_blade,
+    name="blade_php",
+)
+# MCP config files (.mcp.json, claude_desktop_config.json, ...) are routed by
+# filename before generic .json dispatch so they get MCP-aware nodes (servers,
+# commands, packages, env vars) instead of opaque JSON keys.
+_EXTRACTOR_REGISTRY.register_filename_predicate(
+    is_mcp_config_path,
+    extract_mcp_config,
+    name="mcp_config",
+)
+
+
+def register_suffix_extractor(suffix: str, extractor: Any) -> Any:
+    """Register an extractor by file suffix.
+
+    This updates the same mapping exposed as _DISPATCH, preserving compatibility
+    for existing callers while providing a narrow extension point for new
+    ingesters.
+    """
+    return _EXTRACTOR_REGISTRY.register_suffix(suffix, extractor)
+
+
+def register_filename_extractor(
+    predicate: Callable[[Path], bool],
+    extractor: Any,
+    *,
+    name: str | None = None,
+    prepend: bool = False,
+) -> Any:
+    """Register an extractor selected by a filename/path predicate.
+
+    Predicate routes run before suffix dispatch; use this for specific filenames
+    that should override broad extensions such as .json.
+    """
+    return _EXTRACTOR_REGISTRY.register_filename_predicate(
+        predicate,
+        extractor,
+        name=name,
+        prepend=prepend,
+    )
+
+
+def lookup_extractor(path: Path) -> Any | None:
+    """Return the registered extractor for a file, or None if unsupported."""
+    return _EXTRACTOR_REGISTRY.lookup(path)
+
+
 def _get_extractor(path: Path) -> Any | None:
     """Return the correct extractor function for a file, or None if unsupported."""
-    if path.name.endswith(".blade.php"):
-        return extract_blade
-    # MCP config files (.mcp.json, claude_desktop_config.json, ...) are routed
-    # by filename before generic .json dispatch so they get MCP-aware nodes
-    # (servers, commands, packages, env vars) instead of opaque JSON keys.
-    if is_mcp_config_path(path):
-        return extract_mcp_config
-    return _DISPATCH.get(path.suffix)
+    return lookup_extractor(path)
 
 
 def _extract_single_file(args: tuple) -> tuple[int, dict]:
@@ -10627,7 +10676,7 @@ def extract(
 def collect_files(target: Path, *, follow_symlinks: bool = False, root: Path | None = None) -> list[Path]:
     if target.is_file():
         return [target]
-    _EXTENSIONS = set(_DISPATCH.keys())
+    _EXTENSIONS = set(_EXTRACTOR_REGISTRY.suffixes())
     from graph3d.detect import _load_graph3dignore, _is_ignored, _is_noise_dir
     ignore_root = root if root is not None else target
     patterns = _load_graph3dignore(ignore_root)

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import builtins
 import json
 import sqlite3
 from pathlib import Path
+from unittest import mock
 
 from graph3d.build import build_from_json
 from graph3d.detect import FileType, classify_file, count_words
@@ -208,6 +210,29 @@ def test_extract_dispatches_sqlite_files(tmp_path):
         for node in result["nodes"]
     )
     assert any(node["file_type"] == "data" for node in result["nodes"])
+
+
+def test_sqlite_dispatch_does_not_require_sql_text_extra(tmp_path):
+    db_path = tmp_path / "events.sqlite"
+    con = sqlite3.connect(db_path)
+    con.execute("CREATE TABLE events (id INTEGER PRIMARY KEY, type TEXT)")
+    con.commit()
+    con.close()
+
+    real_import = builtins.__import__
+
+    def patched_import(name, *args, **kwargs):
+        if name == "tree_sitter_sql":
+            raise ImportError("optional sql extra absent")
+        return real_import(name, *args, **kwargs)
+
+    with mock.patch("builtins.__import__", side_effect=patched_import):
+        result = extract([db_path], cache_root=tmp_path, parallel=False)
+
+    assert any(
+        node.get("metadata", {}).get("schema_kind") == "sqlite_table"
+        for node in result["nodes"]
+    )
 
 
 def test_detect_classifies_sqlite_as_structural_code():

@@ -1508,6 +1508,7 @@ def main() -> None:
         print("    --backend B             gemini|kimi|claude|openai|deepseek|ollama (default: whichever API key is set)")
         print("    --model M               override backend default model")
         print("    --mode deep             aggressive INFERRED-edge semantic extraction")
+        print("    --profile P             corpus layer: product|tests|worked|session|schemas|all")
         print("    --max-workers N         AST extraction subprocess count (default: cpu_count)")
         print("    --token-budget N        per-chunk token cap for semantic extraction (default: 60000)")
         print("    --max-concurrency N     parallel semantic chunks in flight (default: 4; set 1 for local LLMs)")
@@ -3025,7 +3026,7 @@ def main() -> None:
         if len(sys.argv) < 3:
             print(
                 "Usage: graph3d extract <path> [--backend gemini|kimi|claude|openai|deepseek|ollama] "
-                "[--model M] [--mode deep] [--out DIR] [--google-workspace] [--no-cluster] "
+                "[--model M] [--mode deep] [--profile P] [--out DIR] [--google-workspace] [--no-cluster] "
                 "[--max-workers N] [--token-budget N] [--max-concurrency N] "
                 "[--api-timeout S]",
                 file=sys.stderr,
@@ -3040,6 +3041,7 @@ def main() -> None:
         backend: str | None = None
         model: str | None = None
         extract_mode: str | None = None
+        corpus_profile: str | None = None
         out_dir: Path | None = None
         no_cluster = False
         dedup_llm = False
@@ -3078,7 +3080,14 @@ def main() -> None:
                 sys.exit(2)
             return v
 
-        args = sys.argv[3:]
+        from graph3d.cli_api import parse_extract_profile_args
+        try:
+            parsed_profile_args = parse_extract_profile_args(sys.argv[3:])
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            sys.exit(2)
+        corpus_profile = parsed_profile_args.profile
+        args = list(parsed_profile_args.args)
         i = 0
         while i < len(args):
             a = args[i]
@@ -3255,10 +3264,16 @@ def main() -> None:
                 manifest_path=str(manifest_path),
                 google_workspace=google_workspace or None,
                 extra_excludes=cli_excludes or None,
+                profile=corpus_profile,
             )
         else:
             print(f"[graph3d extract] scanning {target}")
-            detection = _detect(target, google_workspace=google_workspace or None, extra_excludes=cli_excludes or None)
+            detection = _detect(
+                target,
+                google_workspace=google_workspace or None,
+                extra_excludes=cli_excludes or None,
+                profile=corpus_profile,
+            )
 
         files_by_type = detection.get("files", {})
         if incremental_mode:

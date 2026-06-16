@@ -244,6 +244,8 @@ def _node_community_map(graph_data: dict) -> dict[str, int]:
 def _canonical_graph_for_compare(graph_data: dict) -> dict:
     canonical = dict(graph_data)
     canonical.pop("built_at_commit", None)
+    canonical.pop("graph3d_schema", None)
+    canonical.pop("graph3d_metadata", None)
     for key in ("nodes", "links", "edges", "hyperedges"):
         if key in canonical and isinstance(canonical[key], list):
             canonical[key] = sorted(
@@ -256,6 +258,8 @@ def _canonical_graph_for_compare(graph_data: dict) -> dict:
 def _canonical_topology_for_compare(graph_data: dict) -> dict:
     canonical = dict(graph_data)
     canonical.pop("built_at_commit", None)
+    canonical.pop("graph3d_schema", None)
+    canonical.pop("graph3d_metadata", None)
 
     nodes = canonical.get("nodes")
     if isinstance(nodes, list):

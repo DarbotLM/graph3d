@@ -5,7 +5,7 @@
 graph3d processes your files in three passes:
 
 **Pass 1 — Code structure (free, no API calls)**
-Tree-sitter parses your code files and extracts classes, functions, imports, call graphs, and inline comments. This runs locally with no LLM involved. 25 languages supported. SQL files get special treatment: tables, views, foreign keys, and JOIN relationships are extracted deterministically.
+Tree-sitter parses your code files and extracts classes, functions, imports, call graphs, and inline comments. This runs locally with no LLM involved. Over 30 languages and file formats are supported via static extraction. SQL files get special treatment: tables, views, foreign keys, and JOIN relationships are extracted deterministically.
 
 Code files are not sent to the LLM semantic extractor in the normal pipeline. If a corpus contains only code files, Pass 3 is skipped entirely; semantic extraction is reserved for docs, papers, images, and transcripts.
 
@@ -96,3 +96,26 @@ Each edge has:
 - `source_file` — where the relationship was found
 
 Hyperedges (group relationships connecting 3+ nodes) live in `G.graph["hyperedges"]`.
+
+---
+
+## SDK and hosted integration path
+
+The local graph pipeline is the source of truth. Higher-level integrations should
+reuse the same extraction, validation, graph, and query contracts instead of
+re-implementing them.
+
+Current integration options:
+
+- Python callers can import graph3d modules directly.
+- Node callers can use `npx graph3d ...` through the npm launcher.
+- MCP hosts can use the local stdio server.
+
+Planned integrations:
+
+- `graph3d-cli` for hardened CLI automation and JSON output contracts.
+- `graph3d-mcp` for a package-focused MCP server with versioned tool schemas.
+- `graph3d-apim` for an OpenAPI/APIM front door over hosted graph workflows.
+- `graph3d-sdk` for typed Python and TypeScript clients.
+
+See `docs/sdk.md` and `docs/specs/graph3d-platform-buildout.md`.

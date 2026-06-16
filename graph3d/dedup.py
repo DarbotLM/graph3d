@@ -6,11 +6,10 @@ Jaro-Winkler verification → same-community boost → union-find merge.
 from __future__ import annotations
 import math
 import re
+import sys
 import unicodedata
 from collections import defaultdict
-
-from datasketch import MinHash, MinHashLSH
-from rapidfuzz.distance import JaroWinkler
+from typing import Any
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -40,9 +39,44 @@ def _shingles(text: str, k: int = 3) -> set[str]:
     return {text[i : i + k] for i in range(len(text) - k + 1)}
 
 
-def _make_minhash(text: str, num_perm: int = 128) -> MinHash:
+_FUZZY_DEP_WARNING_EMITTED = False
+_PAIRWISE_FALLBACK_MAX_CANDIDATES = 2_000
+
+
+def _warn_fuzzy_deps(message: str) -> None:
+    global _FUZZY_DEP_WARNING_EMITTED
+    if _FUZZY_DEP_WARNING_EMITTED:
+        return
+    _FUZZY_DEP_WARNING_EMITTED = True
+    print(f"[graph3d] warning: {message}", file=sys.stderr)
+
+
+def _load_jaro_winkler() -> Any | None:
+    try:
+        from rapidfuzz.distance import JaroWinkler
+        return JaroWinkler
+    except Exception as exc:
+        _warn_fuzzy_deps(
+            f"rapidfuzz unavailable ({type(exc).__name__}: {exc}); fuzzy dedup disabled."
+        )
+        return None
+
+
+def _load_lsh_deps() -> tuple[Any, Any] | None:
+    try:
+        from datasketch import MinHash, MinHashLSH
+        return MinHash, MinHashLSH
+    except Exception as exc:
+        _warn_fuzzy_deps(
+            f"datasketch unavailable ({type(exc).__name__}: {exc}); "
+            "using bounded pairwise fuzzy dedup fallback."
+        )
+        return None
+
+
+def _make_minhash(text: str, minhash_cls: Any, num_perm: int = 128) -> Any:
     # Strip spaces so "graph extractor" and "graphextractor" share shingles
-    m = MinHash(num_perm=num_perm)
+    m = minhash_cls(num_perm=num_perm)
     for shingle in _shingles(text.replace(" ", "")):
         m.update(shingle.encode("utf-8"))
     return m
@@ -205,63 +239,83 @@ def deduplicate_entities(
 
     fuzzy_merges = 0
     if len(candidates) >= 2:
-        lsh = MinHashLSH(threshold=_LSH_THRESHOLD, num_perm=_NUM_PERM)
-        minhashes: dict[str, MinHash] = {}
+        jaro_winkler = _load_jaro_winkler()
 
-        for node in candidates:
-            norm_label = _norm(node.get("label", node.get("id", "")))
-            m = _make_minhash(norm_label)
-            minhashes[node["id"]] = m
-            try:
-                lsh.insert(node["id"], m)
-            except ValueError:
-                pass  # duplicate key in LSH — already inserted
-
-        for node in candidates:
+        def _consider_pair(node: dict, neighbor: dict) -> bool:
             node_id = node["id"]
             norm_label = _norm(node.get("label", node.get("id", "")))
-            neighbors = lsh.query(minhashes[node_id])
+            neighbor_id = neighbor["id"]
+            if neighbor_id == node_id:
+                return False
+            if uf.find(node_id) == uf.find(neighbor_id):
+                return False
+            if jaro_winkler is None:
+                return False
 
-            for neighbor_id in neighbors:
-                if neighbor_id == node_id:
-                    continue
-                if uf.find(node_id) == uf.find(neighbor_id):
-                    continue
+            neighbor_norm = _norm(neighbor.get("label", neighbor.get("id", "")))
+            score = jaro_winkler.normalized_similarity(norm_label, neighbor_norm) * 100
 
-                neighbor = next((n for n in candidates if n["id"] == neighbor_id), None)
-                if neighbor is None:
-                    continue
+            if _is_variant_pair(norm_label, neighbor_norm):
+                return False
+            if _short_label_blocked(norm_label, neighbor_norm, score):
+                return False
 
-                neighbor_norm = _norm(neighbor.get("label", neighbor.get("id", "")))
-                score = JaroWinkler.normalized_similarity(norm_label, neighbor_norm) * 100
+            c1 = communities.get(node_id)
+            c2 = communities.get(neighbor_id)
+            if (c1 is not None and c2 is not None and c1 == c2
+                    and min(len(norm_label), len(neighbor_norm)) >= 12):
+                score += _COMMUNITY_BOOST
 
-                if _is_variant_pair(norm_label, neighbor_norm):
-                    continue
-                if _short_label_blocked(norm_label, neighbor_norm, score):
-                    continue
+            if score < _MERGE_THRESHOLD:
+                return False
 
-                c1 = communities.get(node_id)
-                c2 = communities.get(neighbor_id)
-                if (c1 is not None and c2 is not None and c1 == c2
-                        and min(len(norm_label), len(neighbor_norm)) >= 12):
-                    score += _COMMUNITY_BOOST
+            # Identical labels across different source files almost always
+            # means same-named-but-different symbols (trait impls, wrapper
+            # methods, common type names). Mirror Pass 1's source_file
+            # partition for this sub-case. (#1046, leaks #895's fix)
+            if norm_label == neighbor_norm:
+                sf_a = node.get("source_file") or ""
+                sf_b = neighbor.get("source_file") or ""
+                if sf_a != sf_b:
+                    return False
+            all_group = norm_to_nodes.get(norm_label, [node]) + \
+                        norm_to_nodes.get(neighbor_norm, [neighbor])
+            winner = _pick_winner(all_group)
+            uf.union(winner["id"], node_id)
+            uf.union(winner["id"], neighbor_id)
+            return True
 
-                if score >= _MERGE_THRESHOLD:
-                    # Identical labels across different source files almost always
-                    # means same-named-but-different symbols (trait impls, wrapper
-                    # methods, common type names). Mirror Pass 1's source_file
-                    # partition for this sub-case. (#1046, leaks #895's fix)
-                    if norm_label == neighbor_norm:
-                        sf_a = node.get("source_file") or ""
-                        sf_b = neighbor.get("source_file") or ""
-                        if sf_a != sf_b:
-                            continue
-                    all_group = norm_to_nodes.get(norm_label, [node]) + \
-                                norm_to_nodes.get(neighbor_norm, [neighbor])
-                    winner = _pick_winner(all_group)
-                    uf.union(winner["id"], node_id)
-                    uf.union(winner["id"], neighbor_id)
-                    fuzzy_merges += 1
+        lsh_deps = _load_lsh_deps()
+        if lsh_deps is not None:
+            MinHash, MinHashLSH = lsh_deps
+            lsh = MinHashLSH(threshold=_LSH_THRESHOLD, num_perm=_NUM_PERM)
+            minhashes: dict[str, Any] = {}
+            candidates_by_id = {node["id"]: node for node in candidates}
+
+            for node in candidates:
+                norm_label = _norm(node.get("label", node.get("id", "")))
+                m = _make_minhash(norm_label, MinHash)
+                minhashes[node["id"]] = m
+                try:
+                    lsh.insert(node["id"], m)
+                except ValueError:
+                    pass  # duplicate key in LSH — already inserted
+
+            for node in candidates:
+                for neighbor_id in lsh.query(minhashes[node["id"]]):
+                    neighbor = candidates_by_id.get(neighbor_id)
+                    if neighbor is not None and _consider_pair(node, neighbor):
+                        fuzzy_merges += 1
+        elif len(candidates) <= _PAIRWISE_FALLBACK_MAX_CANDIDATES:
+            for i, node in enumerate(candidates):
+                for neighbor in candidates[i + 1:]:
+                    if _consider_pair(node, neighbor):
+                        fuzzy_merges += 1
+        else:
+            _warn_fuzzy_deps(
+                f"skipping pairwise fuzzy dedup fallback for {len(candidates)} candidates "
+                f"(limit {_PAIRWISE_FALLBACK_MAX_CANDIDATES})."
+            )
 
     # ── pass 3: LLM tiebreaker for ambiguous pairs (opt-in) ──────────────────
     if dedup_llm_backend is not None:

@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  🇺🇸 <a href="README.md">English</a> | 🇨🇳 <a href="docs/translations/README.zh-CN.md">简体中文</a> | 🇯🇵 <a href="docs/translations/README.ja-JP.md">日本語</a> | 🇰🇷 <a href="docs/translations/README.ko-KR.md">한국어</a> | 🇩🇪 <a href="docs/translations/README.de-DE.md">Deutsch</a> | 🇫🇷 <a href="docs/translations/README.fr-FR.md">Français</a> | 🇪🇸 <a href="docs/translations/README.es-ES.md">Español</a> | 🇮🇳 <a href="docs/translations/README.hi-IN.md">हिन्दी</a> | 🇧🇷 <a href="docs/translations/README.pt-BR.md">Português</a> | 🇷🇺 <a href="docs/translations/README.ru-RU.md">Русский</a> | 🇸🇦 <a href="docs/translations/README.ar-SA.md">العربية</a> | 🇮🇹 <a href="docs/translations/README.it-IT.md">Italiano</a> | 🇵🇱 <a href="docs/translations/README.pl-PL.md">Polski</a> | 🇳🇱 <a href="docs/translations/README.nl-NL.md">Nederlands</a> | 🇹🇷 <a href="docs/translations/README.tr-TR.md">Türkçe</a> | 🇺🇦 <a href="docs/translations/README.uk-UA.md">Українська</a> | 🇻🇳 <a href="docs/translations/README.vi-VN.md">Tiếng Việt</a> | 🇮🇩 <a href="docs/translations/README.id-ID.md">Bahasa Indonesia</a> | 🇸🇪 <a href="docs/translations/README.sv-SE.md">Svenska</a> | 🇬🇷 <a href="docs/translations/README.el-GR.md">Ελληνικά</a> | 🇷🇴 <a href="docs/translations/README.ro-RO.md">Română</a> | 🇨🇿 <a href="docs/translations/README.cs-CZ.md">Čeština</a> | 🇫🇮 <a href="docs/translations/README.fi-FI.md">Suomi</a> | 🇩🇰 <a href="docs/translations/README.da-DK.md">Dansk</a> | 🇳🇴 <a href="docs/translations/README.no-NO.md">Norsk</a> | 🇭🇺 <a href="docs/translations/README.hu-HU.md">Magyar</a> | 🇹🇭 <a href="docs/translations/README.th-TH.md">ภาษาไทย</a> | 🇺🇿 <a href="docs/translations/README.uz-UZ.md">Oʻzbekcha</a> | 🇹🇼 <a href="docs/translations/README.zh-TW.md">繁體中文</a> | 🇵🇭 <a href="docs/translations/README.fil-PH.md">Filipino</a>
+  <a href="README.md">English</a> | <a href="docs/translations/README.zh-CN.md">简体中文</a> | <a href="docs/translations/README.ja-JP.md">日本語</a> | <a href="docs/translations/README.ko-KR.md">한국어</a> | <a href="docs/translations/README.de-DE.md">Deutsch</a> | <a href="docs/translations/README.fr-FR.md">Français</a> | <a href="docs/translations/README.es-ES.md">Español</a> | <a href="docs/translations/README.hi-IN.md">हिन्दी</a> | <a href="docs/translations/README.pt-BR.md">Português</a> | <a href="docs/translations/README.ru-RU.md">Русский</a> | <a href="docs/translations/README.ar-SA.md">العربية</a> | <a href="docs/translations/README.it-IT.md">Italiano</a> | <a href="docs/translations/README.pl-PL.md">Polski</a> | <a href="docs/translations/README.nl-NL.md">Nederlands</a> | <a href="docs/translations/README.tr-TR.md">Türkçe</a> | <a href="docs/translations/README.uk-UA.md">Українська</a> | <a href="docs/translations/README.vi-VN.md">Tiếng Việt</a> | <a href="docs/translations/README.id-ID.md">Bahasa Indonesia</a> | <a href="docs/translations/README.sv-SE.md">Svenska</a> | <a href="docs/translations/README.el-GR.md">Ελληνικά</a> | <a href="docs/translations/README.ro-RO.md">Română</a> | <a href="docs/translations/README.cs-CZ.md">Čeština</a> | <a href="docs/translations/README.fi-FI.md">Suomi</a> | <a href="docs/translations/README.da-DK.md">Dansk</a> | <a href="docs/translations/README.no-NO.md">Norsk</a> | <a href="docs/translations/README.hu-HU.md">Magyar</a> | <a href="docs/translations/README.th-TH.md">ภาษาไทย</a> | <a href="docs/translations/README.uz-UZ.md">Oʻzbekcha</a> | <a href="docs/translations/README.zh-TW.md">繁體中文</a> | <a href="docs/translations/README.fil-PH.md">Filipino</a>
 </p>
 
 <p align="center">
@@ -124,6 +124,21 @@ for example `graph3d claude install --project` or `graph3d codex install --proje
 
 > **Avoid `pip install` on Mac/Windows** if possible. The skill resolves Python at runtime from `graph3d-out/.graph3d_python`; if that points to a different environment than where `pip` installed the package, you'll get `ModuleNotFoundError: No module named 'graph3d'`. `uv tool install` and `pipx install` isolate the package in their own env and avoid this entirely.
 
+### SDK and platform roadmap
+
+The current SDK surface is the Python module API plus the CLI/npx launcher. For
+examples and integration guidance, see [docs/sdk.md](docs/sdk.md).
+
+The next platform phase is tracked in
+[docs/specs/graph3d-platform-buildout.md](docs/specs/graph3d-platform-buildout.md):
+
+| Package | Purpose |
+|---------|---------|
+| `graph3d-cli` | Hardened command surface, JSON output contracts, profiles, plugin hooks, shell completions, and CI-friendly automation. |
+| `graph3d-mcp` | MCP tools/resources/prompts for query, explain, path, affected files, update, validation, and report access. |
+| `graph3d-apim` | OpenAPI and Azure API Management front door for hosted graph workflows, auth, quotas, rate limits, and SDK generation. |
+| `graph3d-sdk` | Python and TypeScript clients over local CLI, MCP, and hosted APIM endpoints. |
+
 ### Pick your platform
 
 | Platform | Install command |
@@ -170,9 +185,13 @@ Install only what you need:
 | `openai` | OpenAI / OpenAI-compatible APIs | `pip install "graph3d[openai]"` |
 | `gemini` | Google Gemini API | `pip install "graph3d[gemini]"` |
 | `bedrock` | AWS Bedrock (uses IAM, no API key) | `pip install "graph3d[bedrock]"` |
-| `sql` | SQL schema extraction | `pip install "graph3d[sql]"` |
+| `sql` | `.sql` file parsing via tree-sitter | `pip install "graph3d[sql]"` |
 | `chinese` | Chinese query segmentation (jieba) | `pip install "graph3d[chinese]"` |
 | `all` | Everything above | `pip install "graph3d[all]"` |
+
+SQLite database ingestion for `.db`, `.sqlite`, and `.sqlite3` files uses Python's
+standard-library `sqlite3` module, so it does not require the `sql` extra. The
+`sql` extra is only for parsing `.sql` text files.
 
 ---
 
@@ -222,7 +241,7 @@ To remove graph3d from all platforms at once: `graph3d uninstall` (add `--purge`
 
 | Type | Extensions |
 |------|-----------|
-| Code (33 languages) | `.py .ts .js .jsx .tsx .mjs .go .rs .java .c .cpp .h .hpp .rb .cs .kt .scala .php .swift .lua .luau .zig .ps1 .ex .exs .m .mm .jl .vue .svelte .astro .groovy .gradle .dart .v .sv .svh .sql .f .f90 .f95 .f03 .f08 .pas .pp .dpr .dpk .lpr .inc .dfm .lfm .lpk .sh .bash .json .dm .dme .dmi .dmm .dmf .sln .csproj .fsproj .vbproj .razor .cshtml` |
+| Code (30+ languages) | `.py .ts .js .jsx .tsx .mjs .go .rs .java .c .cpp .cc .cxx .h .hpp .rb .cs .kt .kts .scala .php .swift .lua .luau .zig .ps1 .ex .exs .m .mm .jl .vue .svelte .astro .groovy .gradle .dart .v .sv .svh .sql .r .f .f90 .f95 .f03 .f08 .pas .pp .dpr .dpk .lpr .inc .dfm .lfm .lpk .sh .bash .json .db .sqlite .sqlite3 .dm .dme .dmi .dmm .dmf .sln .csproj .fsproj .vbproj .razor .cshtml` |
 | MCP configs | `.mcp.json` `mcp.json` `mcp_servers.json` `claude_desktop_config.json` — extracts server nodes, package refs, env var requirements |
 | Docs | `.md .mdx .qmd .html .txt .rst .yaml .yml` |
 | Office | `.docx .xlsx` (requires `pip install graph3d[office]`) |
@@ -314,7 +333,7 @@ graph3d-out/cost.json        # local only
 **Workflow:**
 1. One person runs `/graph3d .` and commits `graph3d-out/`.
 2. Everyone pulls — their assistant reads the graph immediately.
-3. Run `graph3d hook install` to auto-rebuild after each commit (AST only, no API cost). This also sets up a git merge driver so `graph.json` is never left with conflict markers — two devs committing in parallel get their graphs union-merged automatically.
+3. Run `graph3d hook install` to auto-rebuild after each commit (AST only, no API cost). To also prevent `graph.json` conflict markers, set up the git merge driver separately: add `graph3d-out/graph.json merge=graph3d` to `.gitattributes` and register the driver with `git config merge.graph3d.driver "graph3d merge-driver %O %A %B"`.
 4. When docs or papers change, run `/graph3d --update` to refresh those nodes.
 
 ---
@@ -415,7 +434,7 @@ graph3d query "..."
 ```
 
 **`graph.json` has conflict markers after two devs commit at once**
-Run `graph3d hook install` — it sets up a git merge driver that union-merges `graph.json` automatically so conflicts never happen.
+`graph3d hook install` installs post-commit/post-checkout hooks but does not set up the merge driver automatically. To prevent conflict markers, configure the merge driver manually: add `graph3d-out/graph.json merge=graph3d` to `.gitattributes`, then run `git config merge.graph3d.driver "graph3d merge-driver %O %A %B"`.
 
 **Extraction returns empty nodes/edges for docs or PDFs**
 Docs and PDFs require an LLM call. Check that your API key is set and the backend is correct:
@@ -584,11 +603,18 @@ uv run python -c "import graph3d; print(graph3d.__file__)"
 
 ### Running tests
 
+Run tests through `uv run`, not a bare system `python` or `pytest`. CI validates
+against Python 3.10 and 3.12 after `uv sync --all-extras`, then runs:
+
 ```bash
-uv run pytest tests/ -q                # run the full suite
-uv run pytest tests/test_extract.py -q # one module
-uv run pytest tests/ -q -k "python"    # filter by name
+uv run pytest tests/ -q --tb=short          # CI-aligned full suite
+uv run pytest tests/test_extract.py -q      # one module
+uv run pytest tests/ -q -k "python"         # filter by name
 ```
+
+If your global Python is newer than CI or lacks optional extras, re-run
+`uv sync --all-extras` and keep using `uv run` so validation uses the project
+environment instead of whichever interpreter is first on PATH.
 
 > macOS note: the test suite includes both `sample.f90` and `sample.F90` fixtures. These collide on case-insensitive HFS+ / APFS file systems. Run on Linux or in a Docker container if you need to test both Fortran variants simultaneously.
 
@@ -596,7 +622,7 @@ uv run pytest tests/ -q -k "python"    # filter by name
 
 - Active development happens on the `v8` branch.
 - Commit style: `fix: <description>` / `feat: <description>` / `docs: <description>`
-- Before opening a PR, run `uv run pytest tests/ -q` and confirm it passes.
+- Before opening a PR, run `uv run pytest tests/ -q --tb=short` and confirm it passes.
 - Add a fixture file to `tests/fixtures/` and tests to `tests/test_languages.py` for any new language extractor.
 
 ### What to contribute
@@ -606,5 +632,7 @@ uv run pytest tests/ -q -k "python"    # filter by name
 **Extraction bugs** — open an issue with the input file, the cache entry (`graph3d-out/cache/`), and what was missed or wrong.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for module responsibilities and how to add a language.
+See [docs/sdk.md](docs/sdk.md) for Python SDK usage, npm/npx integration, and the
+planned CLI/MCP/APIM package split.
 
 </details>

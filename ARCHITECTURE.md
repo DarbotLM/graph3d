@@ -8,7 +8,7 @@ graph3d is a Claude Code skill backed by a Python library. The skill orchestrate
 detect()  →  extract()  →  build_graph()  →  cluster()  →  analyze()  →  report()  →  export()
 ```
 
-Each stage is a single function in its own module. They communicate through plain Python dicts and NetworkX graphs - no shared state, no side effects outside `graph3d-out/`.
+Each stage is a single function in its own module. They communicate through plain Python dicts and NetworkX graphs - no shared state, no side effects outside `graph3d-out/` during graph construction. The `prs` module additionally calls out to the `gh` CLI (GitHub API), and headless `extract` calls LLM provider APIs for non-code files.
 
 ## Module responsibilities
 
@@ -24,11 +24,27 @@ Each stage is a single function in its own module. They communicate through plai
 | `callflow_html.py` | `write_callflow_html(...)` | graph3d-out files → Mermaid architecture/call-flow HTML |
 | `ingest.py` | `ingest(url, ...)` | URL → file saved to corpus dir |
 | `cache.py` | `check_semantic_cache / save_semantic_cache` | files → (cached, uncached) split |
+| `cli_api.py` | `parse_*` helpers | CLI argv/profile parsing → typed helper results |
+| `extractor_registry.py` | `ExtractorRegistry` | suffix/predicate routes → extractor function lookup |
 | `security.py` | validation helpers | URL / path / label → validated or raises |
 | `validate.py` | `validate_extraction(data)` | extraction dict → raises on schema errors |
 | `serve.py` | `start_server(graph_path)` | graph file path → MCP stdio server |
 | `watch.py` | `watch(root, flag_path)` | directory → writes flag file on change |
 | `benchmark.py` | `run_benchmark(graph_path)` | graph file → corpus vs subgraph token comparison |
+
+## Public surfaces
+
+graph3d has four active or planned integration layers:
+
+| Surface | Status | Notes |
+|---------|--------|-------|
+| Python package API | Active | Import modules such as `detect`, `extract`, `build`, `cluster`, `validate`, and `export` directly. |
+| CLI and npm/npx launcher | Active | `graph3d` remains the canonical command; the npm package delegates to the Python CLI. |
+| MCP stdio server | Active, needs package hardening | `serve.py` exposes graph query behavior to MCP hosts; the planned package is `graph3d-mcp`. |
+| APIM-hosted HTTP API | Planned | `graph3d-apim` will define OpenAPI, APIM policies, hosted backend shape, and generated SDK clients. |
+
+See `docs/sdk.md` for current integration examples and
+`docs/specs/graph3d-platform-buildout.md` for the package buildout spec.
 
 ## Extraction output schema
 
@@ -70,7 +86,7 @@ All external input passes through `graph3d/security.py` before use:
 - URLs → `validate_url()` (http/https only) + `_NoFileRedirectHandler` (blocks file:// redirects)
 - Fetched content → `safe_fetch()` / `safe_fetch_text()` (size cap, timeout)
 - Graph file paths → `validate_graph_path()` (must resolve inside `graph3d-out/`)
-- Node labels → `sanitize_label()` (strips control chars, caps 256 chars, HTML-escapes)
+- Node labels → `sanitize_label()` (strips control chars, caps 256 chars; callers apply `html.escape()` for HTML contexts)
 
 See `SECURITY.md` for the full threat model.
 

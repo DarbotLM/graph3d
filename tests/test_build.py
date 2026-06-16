@@ -275,6 +275,80 @@ def test_build_from_json_preserves_first_direction_on_bidirectional_pair(tmp_pat
     )
 
 
+def _parallel_edge_extraction():
+    return {
+        "nodes": [
+            {"id": "a", "label": "A", "file_type": "code", "source_file": "a.py"},
+            {"id": "b", "label": "B", "file_type": "code", "source_file": "b.py"},
+        ],
+        "edges": [
+            {
+                "source": "a",
+                "target": "b",
+                "relation": "calls",
+                "confidence": "EXTRACTED",
+                "source_file": "a.py",
+                "source_location": "L1",
+            },
+            {
+                "source": "a",
+                "target": "b",
+                "relation": "imports",
+                "confidence": "EXTRACTED",
+                "source_file": "a.py",
+                "source_location": "L2",
+            },
+        ],
+        "input_tokens": 0,
+        "output_tokens": 0,
+    }
+
+
+def test_build_from_json_default_simple_graph_still_collapses_parallel_edges():
+    G = build_from_json(_parallel_edge_extraction(), directed=True)
+
+    assert isinstance(G, nx.DiGraph)
+    assert not G.is_multigraph()
+    assert G.number_of_edges("a", "b") == 1
+    assert len(edge_datas(G, "a", "b")) == 1
+
+
+def test_build_from_json_multigraph_preserves_parallel_edges_with_stable_keys():
+    extraction = _parallel_edge_extraction()
+
+    G1 = build_from_json(extraction, directed=True, multigraph=True)
+    G2 = build_from_json(_parallel_edge_extraction(), directed=True, multigraph=True)
+
+    assert isinstance(G1, nx.MultiDiGraph)
+    assert G1.number_of_edges("a", "b") == 2
+    assert {d["relation"] for d in edge_datas(G1, "a", "b")} == {"calls", "imports"}
+    assert set(G1["a"]["b"].keys()) == set(G2["a"]["b"].keys())
+
+
+def test_build_multigraph_parameter_preserves_parallel_edges():
+    G = build([_parallel_edge_extraction()], directed=True, multigraph=True, dedup=False)
+
+    assert isinstance(G, nx.MultiDiGraph)
+    assert G.number_of_edges("a", "b") == 2
+
+
+def test_build_merge_multigraph_round_trips_parallel_edges(tmp_path):
+    from graph3d.export import to_json
+
+    graph_path = tmp_path / "graph.json"
+    G1 = build_from_json(_parallel_edge_extraction(), directed=True, multigraph=True)
+    original_keys = set(G1["a"]["b"].keys())
+
+    assert to_json(G1, {}, str(graph_path), force=True)
+
+    G2 = build_merge([], graph_path, directed=True, multigraph=True, dedup=False)
+
+    assert isinstance(G2, nx.MultiDiGraph)
+    assert G2.number_of_edges("a", "b") == 2
+    assert {d["relation"] for d in edge_datas(G2, "a", "b")} == {"calls", "imports"}
+    assert set(G2["a"]["b"].keys()) == original_keys
+
+
 # Regression tests for #796 — edge_data / edge_datas helpers must tolerate
 # MultiGraph and MultiDiGraph, which networkx's node_link_graph() produces
 # whenever the loaded JSON has multigraph: true. Plain G.edges[u, v] crashes

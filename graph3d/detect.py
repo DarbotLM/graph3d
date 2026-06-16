@@ -7,6 +7,7 @@ import re
 import shlex
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 from graph3d.google_workspace import (
     GOOGLE_WORKSPACE_EXTENSIONS,
@@ -582,6 +583,166 @@ def _is_noise_dir(part: str, parent: "Path | None" = None) -> bool:
 
 _VCS_MARKERS = (".git", ".hg", ".svn", "_darcs", ".fossil")
 
+CorpusProfile = Literal["product", "tests", "worked", "session", "schemas", "all"]
+
+_CORPUS_PROFILES = frozenset({"product", "tests", "worked", "session", "schemas", "all"})
+_TEST_PROFILE_DIRS = frozenset({"test", "tests", "__tests__", "fixture", "fixtures"})
+_WORKED_PROFILE_DIRS = frozenset({"worked"})
+_PRODUCT_EXCLUDED_DIRS = _TEST_PROFILE_DIRS | _WORKED_PROFILE_DIRS | frozenset({
+    "graph3d-out",
+    "coverage",
+    "lcov-report",
+    "visual-tests",
+    "visual-test",
+    "__snapshots__",
+    "snapshots",
+})
+_PRODUCT_EXCLUDED_PATHS = (
+    ("docs", "translations"),
+)
+_GENERATED_FILE_PATTERNS = (
+    "*.generated.*",
+    "*.gen.*",
+    "*.min.js",
+    "*.min.css",
+    "*.bundle.*",
+)
+_TEST_FILE_PATTERNS = (
+    "test_*",
+    "*_test.*",
+    "*.test.*",
+    "*.spec.*",
+)
+_SESSION_EXCLUDED_DIRS = frozenset({"cache", "probe-cache", "converted"})
+_SESSION_FILE_NAMES = frozenset({
+    "graph.json",
+    "graph-pkg.json",
+    "manifest.json",
+    "graph_report.md",
+    "graph_report_pkg.md",
+})
+_SESSION_FILE_PREFIXES = (".graph3d_",)
+_SCHEMA_EXTENSIONS = frozenset({".sql", ".db", ".sqlite", ".sqlite3"})
+_SCHEMA_NAME_MARKERS = ("schema", "schemas", "openapi", "swagger", "mcp")
+_SCHEMA_PATH_MARKERS = frozenset({"schema", "schemas", "openapi", "swagger", "mcp", "api", "apis"})
+
+
+def _normalise_profile(profile: CorpusProfile | str | None) -> str | None:
+    """Normalize and validate a corpus profile name.
+
+    ``None`` preserves historical full-repository behavior exactly. ``all`` is
+    an explicit full-repository profile for callers that want to opt into the
+    profile API without applying layer filters.
+    """
+    if profile is None:
+        return None
+    value = str(profile).strip().casefold()
+    if not value:
+        return None
+    if value not in _CORPUS_PROFILES:
+        allowed = ", ".join(sorted(_CORPUS_PROFILES))
+        raise ValueError(f"unknown corpus profile {profile!r}; expected one of: {allowed}")
+    return value
+
+
+def _relative_parts(path: Path, root: Path) -> tuple[str, ...]:
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        try:
+            rel = path.resolve().relative_to(root)
+        except ValueError:
+            rel = path
+    return tuple(part.casefold() for part in rel.parts)
+
+
+def _has_prefix(parts: tuple[str, ...], prefix: tuple[str, ...]) -> bool:
+    return len(parts) >= len(prefix) and parts[:len(prefix)] == prefix
+
+
+def _looks_generated(path: Path) -> bool:
+    name = path.name.casefold()
+    return any(fnmatch.fnmatch(name, pattern) for pattern in _GENERATED_FILE_PATTERNS)
+
+
+def _is_test_layer(path: Path, root: Path) -> bool:
+    parts = _relative_parts(path, root)
+    if any(part in _TEST_PROFILE_DIRS for part in parts[:-1]):
+        return True
+    name = parts[-1] if parts else path.name.casefold()
+    return any(fnmatch.fnmatch(name, pattern) for pattern in _TEST_FILE_PATTERNS)
+
+
+def _is_worked_layer(path: Path, root: Path) -> bool:
+    return any(part in _WORKED_PROFILE_DIRS for part in _relative_parts(path, root)[:-1])
+
+
+def _is_session_layer(path: Path, root: Path) -> bool:
+    parts = _relative_parts(path, root)
+    if not parts or parts[0] != "graph3d-out":
+        return False
+    if any(part in _SESSION_EXCLUDED_DIRS for part in parts[:-1]):
+        return False
+    if _has_prefix(parts, ("graph3d-out", "memory")):
+        return True
+    name = parts[-1]
+    return name in _SESSION_FILE_NAMES or name.startswith(_SESSION_FILE_PREFIXES)
+
+
+def _is_schema_layer(path: Path, root: Path) -> bool:
+    parts = _relative_parts(path, root)
+    name = parts[-1] if parts else path.name.casefold()
+    suffix = path.suffix.casefold()
+    if suffix in _SCHEMA_EXTENSIONS:
+        return True
+    if suffix in {".json", ".yaml", ".yml"} and any(marker in name for marker in _SCHEMA_NAME_MARKERS):
+        return True
+    if any(part in _SCHEMA_PATH_MARKERS for part in parts[:-1]):
+        return suffix in CODE_EXTENSIONS or suffix in DOC_EXTENSIONS or suffix in _SCHEMA_EXTENSIONS
+    return False
+
+
+def _profile_allows_file(path: Path, root: Path, profile: str | None) -> bool:
+    """Return True when ``path`` belongs to the requested corpus profile."""
+    if profile is None or profile == "all":
+        return True
+
+    parts = _relative_parts(path, root)
+    if profile == "product":
+        if any(part in _PRODUCT_EXCLUDED_DIRS for part in parts[:-1]):
+            return False
+        if any(_has_prefix(parts, excluded) for excluded in _PRODUCT_EXCLUDED_PATHS):
+            return False
+        return not _looks_generated(path)
+    if profile == "tests":
+        return _is_test_layer(path, root)
+    if profile == "worked":
+        return _is_worked_layer(path, root)
+    if profile == "session":
+        return _is_session_layer(path, root)
+    if profile == "schemas":
+        return _is_schema_layer(path, root)
+    return True
+
+
+def _profile_allows_dir(path: Path, root: Path, profile: str | None) -> bool:
+    """Prune directories that can never match a profile.
+
+    Most profiles use file-level matching so nested test/schema folders are not
+    missed. Product/session have hard layer boundaries that are safe to prune.
+    """
+    if profile == "product":
+        parts = _relative_parts(path, root)
+        if any(part in _PRODUCT_EXCLUDED_DIRS for part in parts):
+            return False
+        if any(_has_prefix(parts, excluded) for excluded in _PRODUCT_EXCLUDED_PATHS):
+            return False
+    if profile == "session":
+        parts = _relative_parts(path, root)
+        if any(part in _SESSION_EXCLUDED_DIRS for part in parts):
+            return False
+    return True
+
 
 def _parse_gitignore_line(raw: str) -> str:
     """Parse one raw line from a .graph3dignore file per gitignore spec.
@@ -868,8 +1029,16 @@ def _auto_follow_symlinks(root: Path) -> bool:
     return False
 
 
-def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace: bool | None = None, extra_excludes: list[str] | None = None) -> dict:
+def detect(
+    root: Path,
+    *,
+    follow_symlinks: bool | None = None,
+    google_workspace: bool | None = None,
+    extra_excludes: list[str] | None = None,
+    profile: CorpusProfile | str | None = None,
+) -> dict:
     root = root.resolve()
+    profile_name = _normalise_profile(profile)
     if follow_symlinks is None:
         follow_symlinks = _auto_follow_symlinks(root)
     google_workspace = google_workspace_enabled() if google_workspace is None else google_workspace
@@ -893,10 +1062,16 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
                 ignore_patterns.append((root, line))
     include_patterns = _load_graph3dinclude(root)
 
-    # Always include graph3d-out/memory/ - query results filed back into the graph
+    # Always include graph3d-out/memory/ in legacy/all mode because query
+    # results can be filed back into the graph. Layered profiles opt out unless
+    # explicitly scanning the session layer.
     memory_dir = root / "graph3d-out" / "memory"
-    scan_paths = [root]
-    if memory_dir.exists():
+    session_dir = root / "graph3d-out"
+    if profile_name == "session" and session_dir.exists():
+        scan_paths = [session_dir]
+    else:
+        scan_paths = [root]
+    if profile_name in (None, "all") and memory_dir.exists():
         scan_paths.append(memory_dir)
 
     seen: set[Path] = set()
@@ -923,6 +1098,7 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
                     d for d in dirnames
                     if not _is_noise_dir(d, dp)
                     and (has_negation or not _is_ignored(dp / d, root, ignore_patterns))
+                    and _profile_allows_dir(dp / d, root, profile_name)
                 ]
             for fname in filenames:
                 if fname in _SKIP_FILES:
@@ -944,6 +1120,8 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
             if str(p).startswith(str(converted_dir)):
                 continue
         if not in_memory and _is_ignored(p, root, ignore_patterns):
+            continue
+        if not _profile_allows_file(p, root, profile_name):
             continue
         if _is_sensitive(p):
             skipped_sensitive.append(str(p))
@@ -1007,7 +1185,7 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
             f"Consider running on a subfolder."
         )
 
-    return {
+    result = {
         "files": {k.value: v for k, v in files.items()},
         "total_files": total_files,
         "total_words": total_words,
@@ -1017,6 +1195,9 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
         "graph3dignore_patterns": len(ignore_patterns),
         "scan_root": str(root.resolve()),
     }
+    if profile_name is not None:
+        result["profile"] = profile_name
+    return result
 
 
 def _md5_file(path: Path) -> str:
@@ -1113,6 +1294,7 @@ def detect_incremental(
     google_workspace: bool | None = None,
     kind: str = "semantic",
     extra_excludes: list[str] | None = None,
+    profile: CorpusProfile | str | None = None,
 ) -> dict:
     """Like detect(), but returns only new or modified files since the last run.
 
@@ -1137,7 +1319,13 @@ def detect_incremental(
     incremental runs. ``None`` (default) means auto-detect: ``True`` when ``root``
     contains at least one direct symlinked child, ``False`` otherwise.
     """
-    full = detect(root, follow_symlinks=follow_symlinks, google_workspace=google_workspace, extra_excludes=extra_excludes)
+    full = detect(
+        root,
+        follow_symlinks=follow_symlinks,
+        google_workspace=google_workspace,
+        extra_excludes=extra_excludes,
+        profile=profile,
+    )
     manifest = load_manifest(manifest_path)
 
     if not manifest:
