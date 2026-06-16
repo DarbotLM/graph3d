@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://graph3d.dev/schemas/extraction-v1.schema.json",
+  "title": "graph3d extraction",
+  "type": "object",
+  "required": ["schema_version", "nodes", "edges"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "hyperedges": {
+      "type": "array",
+      "items": { "type": "object" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "file_type": { "type": "string" },
+        "source_file": { "type": "string" },
+        "source_location": { "type": ["string", "null"] },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "edge": {
+      "type": "object",
+      "required": ["source", "target", "relation"],
+      "properties": {
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "relation": { "type": "string" },
+        "confidence": { "type": ["string", "null"] },
+        "confidence_score": { "type": ["number", "null"] },
+        "context": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -18,6 +18,16 @@ planned package split for `graph3d-cli`, `graph3d-mcp`, and `graph3d-apim`.
 
 ## Python SDK examples
 
+### Unified client API
+
+```python
+from graph3d.sdk import Graph3dClient
+
+client = Graph3dClient(mode="local", graph="graph3d-out/graph.json")
+result = client.query("Where is extraction implemented?")
+print(result.answer)
+```
+
 ### Detect a corpus
 
 ```python

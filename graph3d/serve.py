@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
+from graph3d.affected import format_affected
+from graph3d.mcp_contracts import REQUIRED_PROMPTS, REQUIRED_RESOURCES, REQUIRED_TOOLS, SCHEMA_VERSION
 from graph3d.security import sanitize_label, check_graph_file_size_cap
 from graph3d.build import edge_data
 
@@ -39,6 +41,13 @@ def _load_graph(graph_path: str) -> nx.Graph:
     except json.JSONDecodeError as exc:
         print(f"error: graph.json is corrupted ({exc}). Re-run /graph3d to rebuild.", file=sys.stderr)
         sys.exit(1)
+
+
+def _is_graph3d_out_graph(path: str | Path) -> bool:
+    resolved = Path(path).resolve()
+    if resolved.name != "graph.json":
+        return False
+    return any(parent.name == "graph3d-out" for parent in resolved.parents)
 
 
 def _communities_from_graph(G: nx.Graph) -> dict[int, list[str]]:
@@ -484,6 +493,12 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
     except ImportError as e:
         raise ImportError('mcp not installed. Run: pip install "graph3d[mcp]"') from e
 
+    if not _is_graph3d_out_graph(graph_path):
+        print(
+            "error: MCP server only accepts graph paths inside graph3d-out/graph.json",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     G = _load_graph(graph_path)
     communities = _communities_from_graph(G)
 
@@ -526,7 +541,7 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
 
     @server.list_tools()
     async def list_tools() -> list[types.Tool]:
-        return [
+        legacy_tools = [
             types.Tool(
                 name="query_graph",
                 description="Search the knowledge graph using BFS or DFS. Returns relevant nodes and edges as text context.",
@@ -647,6 +662,15 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
                 },
             ),
         ]
+        required_tools = [
+            types.Tool(
+                name=tool.name,
+                description=tool.description,
+                inputSchema=tool.input_schema,
+            )
+            for tool in REQUIRED_TOOLS
+        ]
+        return legacy_tools + required_tools
 
     def _tool_query_graph(arguments: dict) -> str:
         question = arguments["question"]
@@ -797,6 +821,45 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
         prefix = ("\n".join(warnings) + "\n") if warnings else ""
         return prefix + f"Shortest path ({hops} hops):\n  " + " ".join(segments)
 
+    def _tool_graph3d_affected(arguments: dict) -> str:
+        query = str(arguments.get("query", ""))
+        depth = int(arguments.get("depth", 2))
+        relations = tuple(arguments.get("relations", ()))
+        if not query:
+            return "No query provided."
+        if relations:
+            return format_affected(G, query, depth=depth, relations=relations)
+        return format_affected(G, query, depth=depth)
+
+    def _tool_graph3d_update(arguments: dict) -> str:
+        path = str(arguments.get("path", "."))
+        return (
+            f"Use CLI update for mutable operations: graph3d update {path}. "
+            f"MCP update is read-only metadata in schema_version={SCHEMA_VERSION}."
+        )
+
+    def _tool_graph3d_validate(_: dict) -> str:
+        return json.dumps(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "ok": isinstance(G, nx.Graph),
+                "nodes": G.number_of_nodes(),
+                "edges": G.number_of_edges(),
+            }
+        )
+
+    def _tool_graph3d_export(arguments: dict) -> str:
+        export_format = str(arguments.get("format", "report")).lower()
+        if export_format == "stats":
+            return _tool_graph_stats({})
+        report_path = Path(graph_path).parent / "GRAPH_REPORT.md"
+        if report_path.exists():
+            return report_path.read_text(encoding="utf-8")
+        return "GRAPH_REPORT.md not found."
+
+    def _tool_graph3d_prs(arguments: dict) -> str:
+        return _tool_triage_prs(arguments)
+
     def _tool_list_prs(arguments: dict) -> str:
         from graph3d.prs import fetch_prs, fetch_worktrees, format_prs_text, _detect_default_branch
         repo = arguments.get("repo") or None
@@ -893,6 +956,14 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
         "list_prs": _tool_list_prs,
         "get_pr_impact": _tool_get_pr_impact,
         "triage_prs": _tool_triage_prs,
+        "graph3d_query": _tool_query_graph,
+        "graph3d_explain": lambda arguments: _tool_get_node({"label": arguments.get("concept", "")}),
+        "graph3d_path": _tool_shortest_path,
+        "graph3d_affected": _tool_graph3d_affected,
+        "graph3d_update": _tool_graph3d_update,
+        "graph3d_validate": _tool_graph3d_validate,
+        "graph3d_export": _tool_graph3d_export,
+        "graph3d_prs": _tool_graph3d_prs,
     }
 
     def _load_community_labels() -> dict[int, str]:
@@ -906,7 +977,7 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
 
     @server.list_resources()
     async def list_resources() -> list[types.Resource]:
-        return [
+        resources = [
             types.Resource(uri=AnyUrl("graph3d://report"), name="Graph Report", description="Full GRAPH_REPORT.md", mimeType="text/markdown"),
             types.Resource(uri=AnyUrl("graph3d://stats"), name="Graph Stats", description="Node/edge/community counts and confidence breakdown", mimeType="text/plain"),
             types.Resource(uri=AnyUrl("graph3d://god-nodes"), name="God Nodes", description="Top 10 most-connected nodes", mimeType="text/plain"),
@@ -914,6 +985,16 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
             types.Resource(uri=AnyUrl("graph3d://audit"), name="Confidence Audit", description="EXTRACTED/INFERRED/AMBIGUOUS edge breakdown", mimeType="text/plain"),
             types.Resource(uri=AnyUrl("graph3d://questions"), name="Suggested Questions", description="Suggested questions for this codebase", mimeType="text/plain"),
         ]
+        resources.extend(
+            types.Resource(
+                uri=AnyUrl(resource.uri.replace("{id}", "id").replace("{source}", "source").replace("{target}", "target")),
+                name=resource.name,
+                description=resource.description,
+                mimeType=resource.mime_type,
+            )
+            for resource in REQUIRED_RESOURCES
+        )
+        return resources
 
     @server.read_resource()
     async def read_resource(uri: AnyUrl) -> str:
@@ -965,6 +1046,35 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
                 return "\n".join(lines)
             except Exception as exc:
                 return f"Could not generate questions: {exc}"
+        if uri_str == "graph://summary":
+            return _tool_graph_stats({})
+        if uri_str == "graph://report":
+            report_path = Path(graph_path).parent / "GRAPH_REPORT.md"
+            if report_path.exists():
+                return report_path.read_text(encoding="utf-8")
+            return "GRAPH_REPORT.md not found. Run graph3d extract first."
+        if uri_str == "graph://communities":
+            lines = [f"Communities: {len(communities)}"]
+            for community_id, nodes in communities.items():
+                lines.append(f"- {community_id}: {len(nodes)} nodes")
+            return "\n".join(lines)
+        if uri_str == "graph://schema":
+            return json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "resources": [resource.__dict__ for resource in REQUIRED_RESOURCES],
+                    "tools": [tool.__dict__ for tool in REQUIRED_TOOLS],
+                    "prompts": [prompt.__dict__ for prompt in REQUIRED_PROMPTS],
+                },
+                indent=2,
+            )
+        if uri_str.startswith("graph://nodes/"):
+            node_id = uri_str.split("graph://nodes/", 1)[1]
+            return _tool_get_node({"label": node_id})
+        if uri_str.startswith("graph://paths/"):
+            _, payload = uri_str.split("graph://paths/", 1)
+            source, target = payload.split("/", 1)
+            return _tool_shortest_path({"source": source, "target": target})
         raise ValueError(f"Unknown resource: {uri_str}")
 
     @server.call_tool()
@@ -972,11 +1082,34 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
         _maybe_reload()
         handler = _handlers.get(name)
         if not handler:
-            return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "ok": False,
+                            "error": {"code": "unknown_tool", "message": f"Unknown tool: {name}"},
+                            "schema_version": SCHEMA_VERSION,
+                        }
+                    ),
+                )
+            ]
         try:
             return [types.TextContent(type="text", text=handler(arguments))]
         except Exception as exc:
-            return [types.TextContent(type="text", text=f"Error executing {name}: {exc}")]
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "ok": False,
+                            "error": {"code": "tool_execution_error", "message": str(exc)},
+                            "tool": name,
+                            "schema_version": SCHEMA_VERSION,
+                        }
+                    ),
+                )
+            ]
 
     import asyncio
 

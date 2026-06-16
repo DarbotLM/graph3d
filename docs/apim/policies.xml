@@ -1,0 +1,30 @@
+<policies>
+  <inbound>
+    <base />
+    <set-variable name="x-correlation-id" value="@(context.Request.Headers.GetValueOrDefault(&quot;x-correlation-id&quot;, Guid.NewGuid().ToString()))" />
+    <set-header name="x-correlation-id" exists-action="override">
+      <value>@((string)context.Variables["x-correlation-id"])</value>
+    </set-header>
+    <rate-limit-by-key calls="120" renewal-period="60" counter-key="@(context.Subscription?.Id ?? &quot;anonymous&quot;)" />
+    <validate-content max-size="5242880" size-exceeded-action="prevent" unspecified-content-type-action="prevent" />
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+    <set-header name="x-correlation-id" exists-action="override">
+      <value>@((string)context.Variables["x-correlation-id"])</value>
+    </set-header>
+  </outbound>
+  <on-error>
+    <base />
+    <set-body>{
+      "ok": false,
+      "error": {
+        "code": "apim_error",
+        "message": "@(context.LastError?.Message)"
+      }
+    }</set-body>
+  </on-error>
+</policies>
