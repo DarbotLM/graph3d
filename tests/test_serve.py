@@ -18,6 +18,7 @@ from graph3d.serve import (
     _query_graph_text,
     _resolve_context_filters,
     _subgraph_to_text,
+    _is_graph3d_out_graph,
     _load_graph,
 )
 
@@ -322,6 +323,14 @@ def test_load_graph_cache_key_changes_with_content(tmp_path):
     key2 = (s2.st_mtime_ns, s2.st_size)
 
     assert key1 != key2, "stat key must change when file content changes"
+
+
+def test_graph3d_out_graph_path_check(tmp_path):
+    graph_path = tmp_path / "graph3d-out" / "graph.json"
+    graph_path.parent.mkdir(parents=True)
+    graph_path.write_text("{}")
+    assert _is_graph3d_out_graph(graph_path)
+    assert not _is_graph3d_out_graph(tmp_path / "graph.json")
 
 
 # --- IDF weighting tests (#897) ---

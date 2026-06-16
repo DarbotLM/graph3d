@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://graph3d.dev/schemas/cli-envelope-v1.schema.json",
+  "title": "graph3d CLI envelope",
+  "type": "object",
+  "required": ["schema_version", "ok", "command"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "ok": { "type": "boolean" },
+    "command": { "type": "string" },
+    "data": {},
+    "error": {
+      "type": ["object", "null"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

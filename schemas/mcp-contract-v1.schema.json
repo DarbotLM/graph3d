@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://graph3d.dev/schemas/mcp-contract-v1.schema.json",
+  "title": "graph3d MCP contract",
+  "type": "object",
+  "required": ["schema_version", "resources", "tools", "prompts"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["uri", "name", "description", "mime_type"],
+        "properties": {
+          "uri": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "mime_type": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "input_schema"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "input_schema": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "prompts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
