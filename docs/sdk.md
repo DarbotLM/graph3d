@@ -121,4 +121,3 @@ See `docs/specs/graph3d-platform-buildout.md` for the buildout spec.
 - Add new packages as narrower entry points rather than breaking current installs.
 - Version Python, npm, MCP, OpenAPI, and SDK contracts together.
 - Treat graph JSON, extraction JSON, and MCP tool schemas as public contracts.
-

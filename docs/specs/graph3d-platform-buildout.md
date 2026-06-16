@@ -257,4 +257,3 @@ Contract rules:
 - [ ] Build Python and TypeScript SDK clients.
 - [ ] Add CI for schema, OpenAPI, npm/npx, MCP smoke, and SDK fixtures.
 - [ ] Update README, architecture, SDK docs, and examples.
-
