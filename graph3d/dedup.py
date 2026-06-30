@@ -407,6 +407,12 @@ def _llm_tiebreak(
     except ImportError:
         return
 
+    jaro_winkler = _load_jaro_winkler()
+    if jaro_winkler is None:
+        # rapidfuzz unavailable: skip the tiebreaker gracefully rather than
+        # raising NameError (mirrors the early-returns above).
+        return
+
     ambiguous: list[tuple[dict, dict, float]] = []
     for i, node in enumerate(candidates):
         norm_i = _norm(node.get("label", node.get("id", "")))
@@ -415,7 +421,7 @@ def _llm_tiebreak(
             if uf.find(node["id"]) == uf.find(neighbor["id"]):
                 continue
             norm_j = _norm(neighbor.get("label", neighbor.get("id", "")))
-            score = JaroWinkler.normalized_similarity(norm_i, norm_j) * 100
+            score = jaro_winkler.normalized_similarity(norm_i, norm_j) * 100
             if _is_variant_pair(norm_i, norm_j):
                 continue
             if _short_label_blocked(norm_i, norm_j, score):
