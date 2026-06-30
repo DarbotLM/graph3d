@@ -9,6 +9,8 @@ Full release notes with details on each version: [GitHub Releases](https://githu
 - Feat: friendly relation vocabulary — `query_graph`, `get_neighbors`, and `render_cube` accept umbrella words (`dataflow`, `call`, `import`, `containment`, `reference`, `schema`, `hierarchy`, `rationale`) that resolve to underlying edge predicates, with graceful fallback when an inferred filter would isolate the seed nodes and explicit relations always honored.
 - Feat: canonical terminology layer (`graph3d/terminology.py` plus shipped `graph3d/schemas/*.json`) provides strong-name resolution mapping human/Obsidian/Karpathy-style words (nodes, links, schema, path pattern, dataflow) to the graph object model.
 - Chore: consolidated the test suite from ~1557 single-assert functions into ~68 table-driven functions across 10 domain files, preserving coverage.
+- Chore(deps): bumped all locked dependencies to latest, resolving 11 Dependabot advisories (cryptography 49.0.0, starlette 1.3.1, pydantic-settings 2.14.2, pypdf 6.14.2, msgpack 1.2.1, yt-dlp 2026.6.9). Removed the unused `safety` dev dependency, which eliminated the only-unfixable advisory (transitive `nltk` <= 3.9.4, no upstream patch); `pip-audit` remains for dependency auditing.
+- Fix(extract): the Julia extractor now drops call edges whose target is not defined in the file (matching the Go/Rust extractors), preventing dangling-target edges to external stdlib symbols surfaced by the tree-sitter 0.26 grammar update.
 
 ## 0.8.27 (2026-06-15)
 

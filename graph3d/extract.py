@@ -4757,7 +4757,17 @@ def extract_julia(path: Path) -> dict:
         else:
             walk_calls(body_node, func_nid)
 
-    return {"nodes": nodes, "edges": edges}
+    # Drop edges whose endpoints are not defined in this file (consistent with the
+    # Go/Rust extractors). Import edges are exempt: their module targets are not
+    # always materialized as nodes. This filters calls to external symbols (e.g.
+    # stdlib functions) that the grammar surfaces but that have no in-file node.
+    node_ids = {n["id"] for n in nodes}
+    clean_edges = [
+        e for e in edges
+        if e["source"] in node_ids
+        and (e["target"] in node_ids or e["relation"] in ("imports", "imports_from"))
+    ]
+    return {"nodes": nodes, "edges": clean_edges}
 
 
 _FORTRAN_CPP_EXTS = {".F", ".F90", ".F95", ".F03", ".F08"}
