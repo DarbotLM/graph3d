@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from graph3d.detect import classify_file, count_words, detect, detect_incremental, save_manifest, FileType, _looks_like_paper, _is_ignored, _load_graph3dignore, _is_sensitive
 
@@ -13,53 +14,57 @@ def _relative_detected(result: dict, root: Path) -> set[str]:
     return paths
 
 
-def test_classify_python():
+def _all_detected(result: dict) -> list[str]:
+    return [file_name for files in result["files"].values() for file_name in files]
+
+
+def case_classify_python():
     assert classify_file(Path("foo.py")) == FileType.CODE
 
-def test_classify_typescript():
+def case_classify_typescript():
     assert classify_file(Path("bar.ts")) == FileType.CODE
 
-def test_classify_markdown():
+def case_classify_markdown():
     assert classify_file(Path("README.md")) == FileType.DOCUMENT
 
-def test_classify_pdf():
+def case_classify_pdf():
     assert classify_file(Path("paper.pdf")) == FileType.PAPER
 
-def test_classify_pdf_in_xcassets_skipped():
+def case_classify_pdf_in_xcassets_skipped():
     # PDFs inside Xcode asset catalogs are vector icons, not papers
     asset_pdf = Path("MyApp/Images.xcassets/icon.imageset/icon.pdf")
     assert classify_file(asset_pdf) is None
 
-def test_classify_pdf_in_xcassets_root_skipped():
+def case_classify_pdf_in_xcassets_root_skipped():
     asset_pdf = Path("Pods/HXPHPicker/Assets.xcassets/photo.pdf")
     assert classify_file(asset_pdf) is None
 
-def test_classify_unknown_returns_none():
+def case_classify_unknown_returns_none():
     assert classify_file(Path("archive.zip")) is None
 
-def test_classify_image():
+def case_classify_image():
     assert classify_file(Path("screenshot.png")) == FileType.IMAGE
     assert classify_file(Path("design.jpg")) == FileType.IMAGE
     assert classify_file(Path("diagram.webp")) == FileType.IMAGE
 
-def test_count_words_sample_md():
+def case_count_words_sample_md():
     words = count_words(FIXTURES / "sample.md")
     assert words > 5
 
-def test_detect_finds_fixtures():
+def case_detect_finds_fixtures():
     result = detect(FIXTURES)
     assert result["total_files"] >= 2
     assert "code" in result["files"]
     assert "document" in result["files"]
 
-def test_detect_warns_small_corpus():
+def case_detect_warns_small_corpus():
     result = detect(FIXTURES)
     assert result["needs_graph"] is False
     assert result["warning"] is not None
 
-def test_detect_skips_noise_dot_dirs():
-    """Noise dot dirs (.next, .nuxt, .graph3d cache, …) are skipped (#873).
-    Non-noise dot dirs (.github, .claude, …) are now allowed through."""
+def case_detect_skips_noise_dot_dirs():
+    """Noise dot dirs (.next, .nuxt, .graph3d cache, ...) are skipped (#873).
+    Non-noise dot dirs (.github, .claude, ...) are now allowed through."""
     result = detect(FIXTURES)
     for files in result["files"].values():
         for f in files:
@@ -70,7 +75,7 @@ def test_detect_skips_noise_dot_dirs():
                 assert noise not in f
 
 
-def test_classify_md_paper_by_signals(tmp_path):
+def case_classify_md_paper_by_signals(tmp_path):
     """A .md file with enough paper signals should classify as PAPER."""
     paper = tmp_path / "paper.md"
     paper.write_text(
@@ -81,14 +86,14 @@ def test_classify_md_paper_by_signals(tmp_path):
     assert classify_file(paper) == FileType.PAPER
 
 
-def test_classify_md_doc_without_signals(tmp_path):
+def case_classify_md_doc_without_signals(tmp_path):
     """A plain .md file without paper signals should stay DOCUMENT."""
     doc = tmp_path / "notes.md"
     doc.write_text("# My Notes\n\nHere are some notes about the project.\n")
     assert classify_file(doc) == FileType.DOCUMENT
 
 
-def test_classify_attention_paper():
+def case_classify_attention_paper():
     """The real attention paper file should be classified as PAPER."""
     paper_path = Path("/home/safi/graph3d_eval/papers/attention_is_all_you_need.md")
     if paper_path.exists():
@@ -96,7 +101,7 @@ def test_classify_attention_paper():
         assert result == FileType.PAPER
 
 
-def test_graph3dignore_excludes_file(tmp_path):
+def case_graph3dignore_excludes_file(tmp_path):
     """Files matching .graph3dignore patterns are excluded from detect()."""
     (tmp_path / ".graph3dignore").write_text("vendor/\n*.generated.py\n")
     vendor = tmp_path / "vendor"
@@ -113,14 +118,14 @@ def test_graph3dignore_excludes_file(tmp_path):
     assert result["graph3dignore_patterns"] == 2
 
 
-def test_graph3dignore_missing_is_fine(tmp_path):
+def case_graph3dignore_missing_is_fine(tmp_path):
     """No .graph3dignore is not an error."""
     (tmp_path / "main.py").write_text("x = 1")
     result = detect(tmp_path)
     assert result["graph3dignore_patterns"] == 0
 
 
-def test_graph3dignore_comments_ignored(tmp_path):
+def case_graph3dignore_comments_ignored(tmp_path):
     """Comment lines in .graph3dignore are not treated as patterns."""
     (tmp_path / ".graph3dignore").write_text("# this is a comment\n\nmain.py\n")
     (tmp_path / "main.py").write_text("x = 1")
@@ -130,7 +135,7 @@ def test_graph3dignore_comments_ignored(tmp_path):
     assert any("other.py" in f for f in result["files"]["code"])
 
 
-def test_detect_follows_symlinked_directory(tmp_path):
+def case_detect_follows_symlinked_directory(tmp_path):
     real_dir = tmp_path / "real_lib"
     real_dir.mkdir()
     (real_dir / "util.py").write_text("x = 1")
@@ -144,7 +149,7 @@ def test_detect_follows_symlinked_directory(tmp_path):
     assert any("linked_lib" in f for f in result_yes["files"]["code"])
 
 
-def test_detect_follows_symlinked_file(tmp_path):
+def case_detect_follows_symlinked_file(tmp_path):
     (tmp_path / "real.py").write_text("x = 1")
     (tmp_path / "link.py").symlink_to(tmp_path / "real.py")
 
@@ -154,7 +159,7 @@ def test_detect_follows_symlinked_file(tmp_path):
     assert any("link.py" in f for f in code)
 
 
-def test_graph3dignore_hermetic_without_vcs(tmp_path):
+def case_graph3dignore_hermetic_without_vcs(tmp_path):
     """Without a VCS root, parent .graph3dignore does NOT apply (hermetic)."""
     (tmp_path / ".graph3dignore").write_text("vendor/\n")
     sub = tmp_path / "packages" / "mylib"
@@ -172,7 +177,7 @@ def test_graph3dignore_hermetic_without_vcs(tmp_path):
     assert result["graph3dignore_patterns"] == 0
 
 
-def test_graph3dignore_discovered_from_parent_in_vcs(tmp_path):
+def case_graph3dignore_discovered_from_parent_in_vcs(tmp_path):
     """Inside a VCS repo, parent .graph3dignore applies to subdirectory scans."""
     (tmp_path / ".git").mkdir()
     (tmp_path / ".graph3dignore").write_text("vendor/\n")
@@ -190,7 +195,7 @@ def test_graph3dignore_discovered_from_parent_in_vcs(tmp_path):
     assert result["graph3dignore_patterns"] >= 1
 
 
-def test_graph3dignore_stops_at_git_boundary(tmp_path):
+def case_graph3dignore_stops_at_git_boundary(tmp_path):
     """Upward search stops at the git repo root (.git directory)."""
     (tmp_path / ".graph3dignore").write_text("main.py\n")
     repo = tmp_path / "repo"
@@ -206,7 +211,7 @@ def test_graph3dignore_stops_at_git_boundary(tmp_path):
     assert result["graph3dignore_patterns"] == 0
 
 
-def test_graph3dignore_at_git_root_is_included(tmp_path):
+def case_graph3dignore_at_git_root_is_included(tmp_path):
     """A .graph3dignore at the git repo root is included when scanning a subdir."""
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -226,7 +231,7 @@ def test_graph3dignore_at_git_root_is_included(tmp_path):
     assert result["graph3dignore_patterns"] == 1
 
 
-def test_detect_handles_circular_symlinks(tmp_path):
+def case_detect_handles_circular_symlinks(tmp_path):
     sub = tmp_path / "a"
     sub.mkdir()
     (sub / "main.py").write_text("x = 1")
@@ -236,7 +241,7 @@ def test_detect_handles_circular_symlinks(tmp_path):
     assert any("main.py" in f for f in result["files"]["code"])
 
 
-def test_detect_auto_detects_direct_symlink_child(tmp_path):
+def case_detect_auto_detects_direct_symlink_child(tmp_path):
     """When ``root`` has a direct symlinked child, default (None) follows symlinks
     so the user does not have to know to pass follow_symlinks=True for "fake
     working dir" patterns (folder of symlinks pointing at scattered sources)."""
@@ -245,12 +250,12 @@ def test_detect_auto_detects_direct_symlink_child(tmp_path):
     (real_dir / "util.py").write_text("x = 1")
     (tmp_path / "linked_lib").symlink_to(real_dir)
 
-    # Default (no kwarg): auto-detect → follows because of linked_lib symlink
+    # Default (no kwarg): auto-detect -> follows because of linked_lib symlink
     result = detect(tmp_path)
     assert any("linked_lib" in f for f in result["files"]["code"])
 
 
-def test_detect_default_does_not_follow_when_no_symlinks(tmp_path):
+def case_detect_default_does_not_follow_when_no_symlinks(tmp_path):
     """When ``root`` has no direct symlinks, the auto-detect default stays False
     (legacy behaviour preserved for ordinary scans)."""
     (tmp_path / "main.py").write_text("x = 1")
@@ -258,13 +263,13 @@ def test_detect_default_does_not_follow_when_no_symlinks(tmp_path):
     sub.mkdir()
     (sub / "other.py").write_text("y = 2")
 
-    # Smoke: no symlinks anywhere → auto-detect returns False, scan succeeds
+    # Smoke: no symlinks anywhere -> auto-detect returns False, scan succeeds
     result = detect(tmp_path)
     assert any("main.py" in f for f in result["files"]["code"])
     assert any("other.py" in f for f in result["files"]["code"])
 
 
-def test_detect_explicit_false_overrides_auto_detect(tmp_path):
+def case_detect_explicit_false_overrides_auto_detect(tmp_path):
     """An explicit follow_symlinks=False overrides the auto-detect, even when
     root contains symlinks. Lets callers opt out of the new behaviour."""
     real_dir = tmp_path / "real_lib"
@@ -277,7 +282,7 @@ def test_detect_explicit_false_overrides_auto_detect(tmp_path):
     assert not any("linked_lib" in f for f in result["files"]["code"])
 
 
-def test_detect_incremental_propagates_follow_symlinks(tmp_path, monkeypatch):
+def case_detect_incremental_propagates_follow_symlinks(tmp_path, monkeypatch):
     """detect_incremental must forward follow_symlinks so symlinked sub-trees
     appear in incremental scans the same way they appear in full scans."""
     monkeypatch.chdir(tmp_path)
@@ -308,7 +313,7 @@ def test_detect_incremental_propagates_follow_symlinks(tmp_path, monkeypatch):
     assert second["new_total"] == 0
 
 
-def test_classify_video_extensions():
+def case_classify_video_extensions():
     """Video and audio file extensions should classify as VIDEO."""
     from graph3d.detect import FileType
     assert classify_file(Path("lecture.mp4")) == FileType.VIDEO
@@ -319,13 +324,13 @@ def test_classify_video_extensions():
     assert classify_file(Path("audio.m4a")) == FileType.VIDEO
 
 
-def test_classify_google_workspace_shortcuts():
+def case_classify_google_workspace_shortcuts():
     assert classify_file(Path("notes.gdoc")) == FileType.DOCUMENT
     assert classify_file(Path("budget.gsheet")) == FileType.DOCUMENT
     assert classify_file(Path("deck.gslides")) == FileType.DOCUMENT
 
 
-def test_detect_skips_google_workspace_shortcuts_by_default(tmp_path):
+def case_detect_skips_google_workspace_shortcuts_by_default(tmp_path):
     (tmp_path / "notes.gdoc").write_text('{"doc_id":"doc-1"}', encoding="utf-8")
 
     result = detect(tmp_path)
@@ -334,7 +339,7 @@ def test_detect_skips_google_workspace_shortcuts_by_default(tmp_path):
     assert any("Google Workspace shortcut skipped" in item for item in result["skipped_sensitive"])
 
 
-def test_detect_converts_google_workspace_shortcuts_when_enabled(tmp_path, monkeypatch):
+def case_detect_converts_google_workspace_shortcuts_when_enabled(tmp_path, monkeypatch):
     shortcut = tmp_path / "notes.gdoc"
     shortcut.write_text('{"doc_id":"doc-1"}', encoding="utf-8")
 
@@ -353,14 +358,14 @@ def test_detect_converts_google_workspace_shortcuts_when_enabled(tmp_path, monke
     assert result["total_words"] > 0
 
 
-def test_detect_includes_video_key(tmp_path):
+def case_detect_includes_video_key(tmp_path):
     """detect() result always includes a 'video' key even with no video files."""
     (tmp_path / "main.py").write_text("x = 1")
     result = detect(tmp_path)
     assert "video" in result["files"]
 
 
-def test_detect_finds_video_files(tmp_path):
+def case_detect_finds_video_files(tmp_path):
     """detect() correctly counts video files and does not add them to word count."""
     (tmp_path / "lecture.mp4").write_bytes(b"fake video data")
     (tmp_path / "notes.md").write_text("# Notes\nSome content here.")
@@ -371,16 +376,16 @@ def test_detect_finds_video_files(tmp_path):
     assert result["total_words"] >= 0  # won't crash
 
 
-def test_detect_video_not_in_words(tmp_path):
+def case_detect_video_not_in_words(tmp_path):
     """Video files do not contribute to total_words."""
     (tmp_path / "clip.mp4").write_bytes(b"\x00" * 100)
     result = detect(tmp_path)
-    # Only video file present — total_words should be 0
+    # Only video file present - total_words should be 0
     assert result["total_words"] == 0
 
 
-def test_detect_skips_coverage_dir(tmp_path):
-    """coverage/ and lcov-report/ are noise dirs — HTML reports inside must be excluded (#870)."""
+def case_detect_skips_coverage_dir(tmp_path):
+    """coverage/ and lcov-report/ are noise dirs - HTML reports inside must be excluded (#870)."""
     cov = tmp_path / "coverage" / "lcov-report"
     cov.mkdir(parents=True)
     (cov / "index.html").write_text("<html>coverage report</html>")
@@ -393,8 +398,8 @@ def test_detect_skips_coverage_dir(tmp_path):
     assert any("main.py" in f for f in all_files)
 
 
-def test_detect_skips_visual_tests_dir(tmp_path):
-    """visual-tests/ bundles and snapshots are noise — must be excluded (#869)."""
+def case_detect_skips_visual_tests_dir(tmp_path):
+    """visual-tests/ bundles and snapshots are noise - must be excluded (#869)."""
     vt = tmp_path / "visual-tests"
     vt.mkdir()
     (vt / "bundle.js").write_text("var u3=function(){};var d2=function(){}")
@@ -406,8 +411,8 @@ def test_detect_skips_visual_tests_dir(tmp_path):
     assert any("app.py" in f for f in all_files)
 
 
-def test_detect_skips_snapshots_dir(tmp_path):
-    """__snapshots__/ and snapshots/ are jest/vitest artefacts — must be excluded."""
+def case_detect_skips_snapshots_dir(tmp_path):
+    """__snapshots__/ and snapshots/ are jest/vitest artefacts - must be excluded."""
     (tmp_path / "__snapshots__").mkdir()
     (tmp_path / "__snapshots__" / "app.test.ts.snap").write_text("// Jest Snapshot\nexports[`test 1`] = `<div/>`")
     (tmp_path / "app.ts").write_text("export function greet() { return 'hi'; }")
@@ -417,8 +422,8 @@ def test_detect_skips_snapshots_dir(tmp_path):
     assert any("app.ts" in f for f in all_files)
 
 
-def test_detect_skips_storybook_static_dir(tmp_path):
-    """storybook-static/ is a build artefact — must be excluded."""
+def case_detect_skips_storybook_static_dir(tmp_path):
+    """storybook-static/ is a build artefact - must be excluded."""
     sb = tmp_path / "storybook-static"
     sb.mkdir()
     (sb / "index.html").write_text("<html>storybook</html>")
@@ -432,7 +437,7 @@ def test_detect_skips_storybook_static_dir(tmp_path):
 
 # --- #873: dot dirs allowed, framework caches blocked ---
 
-def test_detect_allows_github_dir(tmp_path):
+def case_detect_allows_github_dir(tmp_path):
     """Files inside .github/ (workflows etc.) are now indexed (#873)."""
     gh = tmp_path / ".github" / "workflows"
     gh.mkdir(parents=True)
@@ -443,7 +448,7 @@ def test_detect_allows_github_dir(tmp_path):
     assert any(".github" in f for f in all_files), "expected .github/workflows/ci.yml to be detected"
 
 
-def test_detect_skips_next_cache(tmp_path):
+def case_detect_skips_next_cache(tmp_path):
     """.next/ (Next.js build cache) must be excluded even after dot-dir fix (#873)."""
     next_dir = tmp_path / ".next" / "cache"
     next_dir.mkdir(parents=True)
@@ -457,7 +462,7 @@ def test_detect_skips_next_cache(tmp_path):
     assert any("index.tsx" in f for f in all_files)
 
 
-def test_detect_skips_graph3d_own_cache(tmp_path):
+def case_detect_skips_graph3d_own_cache(tmp_path):
     """.graph3d/ (extraction cache) must never be re-indexed as source (#873)."""
     cache = tmp_path / ".graph3d" / "cache"
     cache.mkdir(parents=True)
@@ -471,7 +476,7 @@ def test_detect_skips_graph3d_own_cache(tmp_path):
 
 # --- #882: gitignore parent-exclusion rule for ! re-includes ---
 
-def test_negation_cannot_rescue_file_under_excluded_dir(tmp_path):
+def case_negation_cannot_rescue_file_under_excluded_dir(tmp_path):
     """A ! re-include cannot un-ignore a file whose parent dir is excluded (#882)."""
     from graph3d.detect import _is_ignored, _load_graph3dignore
     android = tmp_path / "android" / "app" / "src"
@@ -486,7 +491,7 @@ def test_negation_cannot_rescue_file_under_excluded_dir(tmp_path):
     )
 
 
-def test_negation_works_when_no_ancestor_excluded(tmp_path):
+def case_negation_works_when_no_ancestor_excluded(tmp_path):
     """A ! re-include must still un-ignore a file when no ancestor is excluded (#882)."""
     from graph3d.detect import _is_ignored, _load_graph3dignore
     src = tmp_path / "src"
@@ -500,7 +505,7 @@ def test_negation_works_when_no_ancestor_excluded(tmp_path):
     )
 
 
-def test_negation_ancestor_itself_reincluded(tmp_path):
+def case_negation_ancestor_itself_reincluded(tmp_path):
     """If the ancestor dir itself is re-included, its children should not be blocked (#882)."""
     from graph3d.detect import _is_ignored, _load_graph3dignore
     vendor = tmp_path / "vendor" / "lib"
@@ -515,8 +520,8 @@ def test_negation_ancestor_itself_reincluded(tmp_path):
 
 # Regression tests for #1087 - anchored patterns must not match basename deep in tree
 
-def test_anchored_dir_not_matched_at_depth(tmp_path):
-    """/inbox/ must not match src/inbox/ — only inbox/ at the anchor root."""
+def case_anchored_dir_not_matched_at_depth(tmp_path):
+    """/inbox/ must not match src/inbox/ - only inbox/ at the anchor root."""
     from graph3d.detect import _is_ignored, _load_graph3dignore
     src_inbox = tmp_path / "src" / "inbox"
     src_inbox.mkdir(parents=True)
@@ -525,14 +530,14 @@ def test_anchored_dir_not_matched_at_depth(tmp_path):
     (tmp_path / ".graph3dignore").write_text("/inbox/\n")
     patterns = _load_graph3dignore(tmp_path)
     assert not _is_ignored(f, tmp_path, patterns), (
-        "src/inbox/main.rs must NOT be ignored by /inbox/ — the pattern is anchored to root"
+        "src/inbox/main.rs must NOT be ignored by /inbox/ - the pattern is anchored to root"
     )
     assert not _is_ignored(src_inbox, tmp_path, patterns), (
-        "src/inbox/ must NOT be ignored by /inbox/ — the pattern is anchored to root"
+        "src/inbox/ must NOT be ignored by /inbox/ - the pattern is anchored to root"
     )
 
 
-def test_anchored_dir_matches_at_root(tmp_path):
+def case_anchored_dir_matches_at_root(tmp_path):
     """/inbox/ must still match inbox/ at the anchor root (positive case)."""
     from graph3d.detect import _is_ignored, _load_graph3dignore
     inbox = tmp_path / "inbox"
@@ -549,7 +554,7 @@ def test_anchored_dir_matches_at_root(tmp_path):
     )
 
 
-def test_anchored_file_not_matched_at_depth(tmp_path):
+def case_anchored_file_not_matched_at_depth(tmp_path):
     """/build must not match src/build."""
     from graph3d.detect import _is_ignored, _load_graph3dignore
     src_build = tmp_path / "src" / "build"
@@ -561,7 +566,7 @@ def test_anchored_file_not_matched_at_depth(tmp_path):
     )
 
 
-def test_unanchored_dir_still_matches_at_depth(tmp_path):
+def case_unanchored_dir_still_matches_at_depth(tmp_path):
     """inbox/ (no leading /) must still match src/inbox/ anywhere in the tree."""
     from graph3d.detect import _is_ignored, _load_graph3dignore
     src_inbox = tmp_path / "src" / "inbox"
@@ -575,7 +580,7 @@ def test_unanchored_dir_still_matches_at_depth(tmp_path):
     )
 
 
-def test_anchored_multi_segment_pattern(tmp_path):
+def case_anchored_multi_segment_pattern(tmp_path):
     """/src/inbox/ must match src/inbox/ but not x/src/inbox/."""
     from graph3d.detect import _is_ignored, _load_graph3dignore
     (tmp_path / "src" / "inbox").mkdir(parents=True)
@@ -595,38 +600,38 @@ def test_anchored_multi_segment_pattern(tmp_path):
 
 
 # Regression tests for #920 - sensitive pattern misses underscore-prefixed names
-def test_sensitive_flags_api_token_txt():
+def case_sensitive_flags_api_token_txt():
     assert _is_sensitive(Path("api_token.txt"))
 
-def test_sensitive_flags_oauth_token_json():
+def case_sensitive_flags_oauth_token_json():
     assert _is_sensitive(Path("oauth_token.json"))
 
-def test_sensitive_flags_underscore_secret():
+def case_sensitive_flags_underscore_secret():
     assert _is_sensitive(Path("app_secret.yaml"))
 
-def test_sensitive_does_not_flag_tokenizer_py():
+def case_sensitive_does_not_flag_tokenizer_py():
     assert not _is_sensitive(Path("tokenizer.py"))
 
-def test_sensitive_does_not_flag_tokenize_py():
+def case_sensitive_does_not_flag_tokenize_py():
     assert not _is_sensitive(Path("tokenize.py"))
 
-def test_sensitive_flags_passwords_py():
-    # passwords.py is just as likely a secret store as passwords.txt — code ext is no excuse
+def case_sensitive_flags_passwords_py():
+    # passwords.py is just as likely a secret store as passwords.txt - code ext is no excuse
     assert _is_sensitive(Path("passwords.py"))
 
-def test_sensitive_flags_ssh_dir():
+def case_sensitive_flags_ssh_dir():
     assert _is_sensitive(Path("/home/user/.ssh/id_rsa"))
 
-def test_sensitive_flags_secrets_dir():
+def case_sensitive_flags_secrets_dir():
     assert _is_sensitive(Path("config/secrets/db.json"))
 
-def test_sensitive_flags_token_txt():
+def case_sensitive_flags_token_txt():
     assert _is_sensitive(Path("token.txt"))
 
-def test_sensitive_flags_credentials_json():
+def case_sensitive_flags_credentials_json():
     assert _is_sensitive(Path("credentials.json"))
 
-def test_sensitive_does_not_flag_root_file_named_credentials():
+def case_sensitive_does_not_flag_root_file_named_credentials():
     # A root-level file called "credentials" (no parent dir named credentials)
     # must NOT be flagged by Stage 1; Stage 2 name-pattern check catches it instead.
     # Specifically: Path("credentials").parts == ('credentials',) which is parts[:-1] == ()
@@ -638,19 +643,19 @@ def test_sensitive_does_not_flag_root_file_named_credentials():
     # Verify the whole function still returns True (via name pattern, not dir check).
     assert _is_sensitive(p)
 
-def test_sensitive_secret_handler_txt():
+def case_sensitive_secret_handler_txt():
     # Both patterns now use (?![a-zA-Z]) so underscore after keyword is allowed.
-    # "secret_handler.txt": "secret" followed by "_" (not alpha) → flagged.
+    # "secret_handler.txt": "secret" followed by "_" (not alpha) -> flagged.
     assert _is_sensitive(Path("secret_handler.txt"))
 
-def test_sensitive_token_config_yaml():
-    # "token_config.yaml": "token" followed by "_" (not alpha) → flagged.
+def case_sensitive_token_config_yaml():
+    # "token_config.yaml": "token" followed by "_" (not alpha) -> flagged.
     assert _is_sensitive(Path("token_config.yaml"))
 
 
-# ── Issue #933: failed-chunk files must not be frozen in manifest ─────────────
+# Issue #933: failed-chunk files must not be frozen in manifest
 
-def test_save_manifest_skips_semantic_hash_for_files_without_cache(tmp_path):
+def case_save_manifest_skips_semantic_hash_for_files_without_cache(tmp_path):
     """Files in failed chunks have no semantic cache entry; save_manifest must
     leave their semantic_hash empty so detect_incremental re-queues them (#933)."""
     import json
@@ -670,7 +675,7 @@ def test_save_manifest_skips_semantic_hash_for_files_without_cache(tmp_path):
     manifest_path = str(tmp_path / "manifest.json")
 
     # Simulate what __main__.py now does: only include files with semantic output.
-    sem_extracted = {str(doc1)}  # doc2 not present — failed chunk
+    sem_extracted = {str(doc1)}  # doc2 not present - failed chunk
     sem_types = {"document", "paper", "image"}
     safe_files = {
         ftype: [f for f in flist if ftype not in sem_types or f in sem_extracted]
@@ -685,7 +690,7 @@ def test_save_manifest_skips_semantic_hash_for_files_without_cache(tmp_path):
 
 
 
-def test_save_manifest_without_filter_unchanged_for_code(tmp_path):
+def case_save_manifest_without_filter_unchanged_for_code(tmp_path):
     """Code files must be stamped in the manifest regardless of semantic cache."""
     import json
 
@@ -701,7 +706,7 @@ def test_save_manifest_without_filter_unchanged_for_code(tmp_path):
     assert manifest[str(py)]["ast_hash"] != ""
 # Regression tests for #945 - .gitignore fallback when no .graph3dignore exists
 
-def test_gitignore_fallback_when_no_graph3dignore(tmp_path):
+def case_gitignore_fallback_when_no_graph3dignore(tmp_path):
     """When no .graph3dignore exists, .gitignore patterns are honored (#945)."""
     (tmp_path / ".git").mkdir()
     (tmp_path / ".gitignore").write_text("vendor/\n*.generated.py\n")
@@ -718,7 +723,7 @@ def test_gitignore_fallback_when_no_graph3dignore(tmp_path):
     assert not any("generated" in f for f in code)
 
 
-def test_graph3dignore_takes_precedence_over_gitignore(tmp_path):
+def case_graph3dignore_takes_precedence_over_gitignore(tmp_path):
     """When both exist, .graph3dignore is used and .gitignore is ignored (#945)."""
     (tmp_path / ".git").mkdir()
     # .gitignore would exclude main.py; .graph3dignore excludes only other.py
@@ -735,7 +740,7 @@ def test_graph3dignore_takes_precedence_over_gitignore(tmp_path):
 
 # Regression tests for #947 - .worktrees/ skipped and --exclude flag
 
-def test_detect_skips_worktrees_dir(tmp_path):
+def case_detect_skips_worktrees_dir(tmp_path):
     """Files inside .worktrees/ are never indexed (#947)."""
     wt = tmp_path / ".worktrees" / "feature-branch"
     wt.mkdir(parents=True)
@@ -748,7 +753,7 @@ def test_detect_skips_worktrees_dir(tmp_path):
     assert not any(".worktrees" in f for f in code)
 
 
-def test_detect_skips_nested_worktrees_dir(tmp_path):
+def case_detect_skips_nested_worktrees_dir(tmp_path):
     """Files inside .claude/worktrees/ (nested placement) are never indexed (#1023)."""
     wt = tmp_path / ".claude" / "worktrees" / "feature-branch"
     wt.mkdir(parents=True)
@@ -761,7 +766,7 @@ def test_detect_skips_nested_worktrees_dir(tmp_path):
     assert not any("worktrees" in f for f in code)
 
 
-def test_detect_extra_excludes_pattern(tmp_path):
+def case_detect_extra_excludes_pattern(tmp_path):
     """extra_excludes patterns exclude matching files from detect() (#947)."""
     (tmp_path / "main.py").write_text("x = 1")
     (tmp_path / "secret.py").write_text("API_KEY = 'abc'")
@@ -776,7 +781,7 @@ def test_detect_extra_excludes_pattern(tmp_path):
     assert not any("legacy" in f for f in code)
 
 
-def test_detect_product_profile_excludes_non_product_layers(tmp_path):
+def case_detect_product_profile_excludes_non_product_layers(tmp_path):
     """Product profile keeps source/docs/config while excluding tests, worked, and output."""
     source = tmp_path / "graph3d"
     source.mkdir()
@@ -815,7 +820,7 @@ def test_detect_product_profile_excludes_non_product_layers(tmp_path):
     assert not any(path.startswith("docs/translations/") for path in rel)
 
 
-def test_detect_tests_profile_focuses_tests_and_fixtures(tmp_path):
+def case_detect_tests_profile_focuses_tests_and_fixtures(tmp_path):
     src = tmp_path / "src"
     src.mkdir()
     (src / "app.py").write_text("x = 1")
@@ -837,7 +842,7 @@ def test_detect_tests_profile_focuses_tests_and_fixtures(tmp_path):
     assert "src/app.py" not in rel
 
 
-def test_detect_schemas_profile_includes_schema_sql_mcp_and_api_files(tmp_path):
+def case_detect_schemas_profile_includes_schema_sql_mcp_and_api_files(tmp_path):
     src = tmp_path / "src"
     src.mkdir()
     (src / "app.py").write_text("x = 1")
@@ -863,7 +868,7 @@ def test_detect_schemas_profile_includes_schema_sql_mcp_and_api_files(tmp_path):
     assert "src/app.py" not in rel
 
 
-def test_detect_all_profile_matches_legacy_full_repo_layers(tmp_path):
+def case_detect_all_profile_matches_legacy_full_repo_layers(tmp_path):
     source = tmp_path / "src"
     source.mkdir()
     (source / "app.py").write_text("x = 1")
@@ -892,7 +897,7 @@ def test_detect_all_profile_matches_legacy_full_repo_layers(tmp_path):
 # Shebang interpreter parsing
 # ---------------------------------------------------------------------------
 
-def test_shebang_interpreter_plain(tmp_path):
+def case_shebang_interpreter_plain(tmp_path):
     """Plain shebang returns the interpreter basename."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "plain"
@@ -900,7 +905,7 @@ def test_shebang_interpreter_plain(tmp_path):
     assert _shebang_interpreter(script) == "python3"
 
 
-def test_shebang_interpreter_env_single_arg(tmp_path):
+def case_shebang_interpreter_env_single_arg(tmp_path):
     """`#!/usr/bin/env python3` returns the interpreter, not 'env'."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_single"
@@ -908,7 +913,7 @@ def test_shebang_interpreter_env_single_arg(tmp_path):
     assert _shebang_interpreter(script) == "python3"
 
 
-def test_shebang_interpreter_env_dash_s(tmp_path):
+def case_shebang_interpreter_env_dash_s(tmp_path):
     """`#!/usr/bin/env -S python3 -u` (-S split-args form) recovers the interpreter."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_dashs"
@@ -916,7 +921,7 @@ def test_shebang_interpreter_env_dash_s(tmp_path):
     assert _shebang_interpreter(script) == "python3"
 
 
-def test_shebang_interpreter_env_with_flags(tmp_path):
+def case_shebang_interpreter_env_with_flags(tmp_path):
     """`#!/usr/bin/env -i bash` skips env flags and resolves to the interpreter."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_flags"
@@ -924,7 +929,7 @@ def test_shebang_interpreter_env_with_flags(tmp_path):
     assert _shebang_interpreter(script) == "bash"
 
 
-def test_shebang_interpreter_env_with_assignment(tmp_path):
+def case_shebang_interpreter_env_with_assignment(tmp_path):
     """`#!/usr/bin/env DEBUG=1 python3` skips var=value assignments."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_assign"
@@ -932,7 +937,7 @@ def test_shebang_interpreter_env_with_assignment(tmp_path):
     assert _shebang_interpreter(script) == "python3"
 
 
-def test_shebang_interpreter_no_shebang(tmp_path):
+def case_shebang_interpreter_no_shebang(tmp_path):
     """File without shebang returns None."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "no_shebang"
@@ -940,7 +945,7 @@ def test_shebang_interpreter_no_shebang(tmp_path):
     assert _shebang_interpreter(script) is None
 
 
-def test_shebang_interpreter_quoted_path(tmp_path):
+def case_shebang_interpreter_quoted_path(tmp_path):
     """Quoted interpreter path with spaces parses correctly via shlex."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "quoted"
@@ -950,7 +955,7 @@ def test_shebang_interpreter_quoted_path(tmp_path):
     assert _shebang_interpreter(script) == "python3"
 
 
-def test_shebang_file_type_classifies_via_interpreter(tmp_path):
+def case_shebang_file_type_classifies_via_interpreter(tmp_path):
     """Classify file type via interpreter, including env -S form."""
     script = tmp_path / "tool"
     script.write_bytes(b"#!/usr/bin/env -S python3 -u\nprint('x')\n")
@@ -958,14 +963,14 @@ def test_shebang_file_type_classifies_via_interpreter(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_unreadable_returns_none(tmp_path):
+def case_shebang_interpreter_unreadable_returns_none(tmp_path):
     """Unreadable / nonexistent files return None, never raise."""
     from graph3d.detect import _shebang_interpreter
     missing = tmp_path / "does_not_exist"
     assert _shebang_interpreter(missing) is None
 
 
-def test_shebang_interpreter_env_unset_with_operand(tmp_path):
+def case_shebang_interpreter_env_unset_with_operand(tmp_path):
     """`env -u VAR python3` skips both -u and its required operand."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_unset"
@@ -974,7 +979,7 @@ def test_shebang_interpreter_env_unset_with_operand(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_chdir_with_operand(tmp_path):
+def case_shebang_interpreter_env_chdir_with_operand(tmp_path):
     """`env -C /tmp python3` skips both -C and its workdir operand."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_chdir"
@@ -983,7 +988,7 @@ def test_shebang_interpreter_env_chdir_with_operand(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_path_with_operand(tmp_path):
+def case_shebang_interpreter_env_path_with_operand(tmp_path):
     """`env -P /bin python3` skips both -P and its utilpath operand."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_path"
@@ -992,7 +997,7 @@ def test_shebang_interpreter_env_path_with_operand(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_dash_s_after_flag(tmp_path):
+def case_shebang_interpreter_env_dash_s_after_flag(tmp_path):
     """`env -i -S "python3 -u"` handles -S after another env flag."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_flag_dash_s"
@@ -1001,7 +1006,7 @@ def test_shebang_interpreter_env_dash_s_after_flag(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_clumped_u_operand(tmp_path):
+def case_shebang_interpreter_env_clumped_u_operand(tmp_path):
     """Clumped `-uPYTHONPATH` form (no space between flag and operand) is one arg."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_clumped"
@@ -1010,16 +1015,16 @@ def test_shebang_interpreter_env_clumped_u_operand(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_missing_operand_returns_none(tmp_path):
-    """`env -u` with no operand → not a valid command, return None."""
+def case_shebang_interpreter_env_missing_operand_returns_none(tmp_path):
+    """`env -u` with no operand -> not a valid command, return None."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_missing_op"
     script.write_bytes(b"#!/usr/bin/env -u\n")
     assert _shebang_interpreter(script) is None
 
 
-def test_shebang_interpreter_env_gnu_split_string_equals(tmp_path):
-    """GNU `--split-string='python3 -u'` (with `=` operand) → python3."""
+def case_shebang_interpreter_env_gnu_split_string_equals(tmp_path):
+    """GNU `--split-string='python3 -u'` (with `=` operand) -> python3."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_split_eq"
     script.write_bytes(b"#!/usr/bin/env --split-string='python3 -u'\nprint('x')\n")
@@ -1027,8 +1032,8 @@ def test_shebang_interpreter_env_gnu_split_string_equals(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_gnu_split_string_separate(tmp_path):
-    """GNU `--split-string "python3 -u"` (separate operand) → python3."""
+def case_shebang_interpreter_env_gnu_split_string_separate(tmp_path):
+    """GNU `--split-string "python3 -u"` (separate operand) -> python3."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_split_sep"
     script.write_bytes(b'#!/usr/bin/env --split-string "python3 -u"\nprint("x")\n')
@@ -1036,7 +1041,7 @@ def test_shebang_interpreter_env_gnu_split_string_separate(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_gnu_argv0_operand(tmp_path):
+def case_shebang_interpreter_env_gnu_argv0_operand(tmp_path):
     """GNU `-a alias python3` skips both -a and its argv0 operand."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_argv0"
@@ -1045,7 +1050,7 @@ def test_shebang_interpreter_env_gnu_argv0_operand(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_compact_dash_s(tmp_path):
+def case_shebang_interpreter_env_compact_dash_s(tmp_path):
     """Compact `-Spython3 -u` form (no space between -S and packed string)."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_compact_dash_s"
@@ -1054,7 +1059,7 @@ def test_shebang_interpreter_env_compact_dash_s(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_compact_v_then_s(tmp_path):
+def case_shebang_interpreter_env_compact_v_then_s(tmp_path):
     """Compact `-vSpython3` (-v plus compact -S)."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_compact_vs"
@@ -1063,7 +1068,7 @@ def test_shebang_interpreter_env_compact_v_then_s(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_long_unset_separate_operand(tmp_path):
+def case_shebang_interpreter_env_long_unset_separate_operand(tmp_path):
     """GNU `--unset PYTHONPATH python3` (separate operand)."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_long_unset"
@@ -1072,7 +1077,7 @@ def test_shebang_interpreter_env_long_unset_separate_operand(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_long_unset_equals(tmp_path):
+def case_shebang_interpreter_env_long_unset_equals(tmp_path):
     """GNU `--unset=PYTHONPATH python3` (`=` operand form)."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_long_unset_eq"
@@ -1081,7 +1086,7 @@ def test_shebang_interpreter_env_long_unset_equals(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_long_chdir_separate_operand(tmp_path):
+def case_shebang_interpreter_env_long_chdir_separate_operand(tmp_path):
     """GNU `--chdir /tmp python3` (separate operand)."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_long_chdir"
@@ -1090,7 +1095,7 @@ def test_shebang_interpreter_env_long_chdir_separate_operand(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_long_chdir_equals(tmp_path):
+def case_shebang_interpreter_env_long_chdir_equals(tmp_path):
     """GNU `--chdir=/tmp python3` (`=` operand form)."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_long_chdir_eq"
@@ -1099,7 +1104,7 @@ def test_shebang_interpreter_env_long_chdir_equals(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_signal_flags(tmp_path):
+def case_shebang_interpreter_env_signal_flags(tmp_path):
     """GNU signal-handling flags skip transparently."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_signal"
@@ -1108,8 +1113,8 @@ def test_shebang_interpreter_env_signal_flags(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_unknown_option_returns_none(tmp_path):
-    """Unknown hyphen-prefixed env option → return None rather than guessing."""
+def case_shebang_interpreter_env_unknown_option_returns_none(tmp_path):
+    """Unknown hyphen-prefixed env option -> return None rather than guessing."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_unknown"
     script.write_bytes(b"#!/usr/bin/env --no-such-flag python3\n")
@@ -1118,7 +1123,7 @@ def test_shebang_interpreter_env_unknown_option_returns_none(tmp_path):
     assert _shebang_interpreter(script) is None
 
 
-def test_shebang_interpreter_env_dash_s_assignment_before_interpreter(tmp_path):
+def case_shebang_interpreter_env_dash_s_assignment_before_interpreter(tmp_path):
     """`-S` payload may carry NAME=value assignments before the interpreter."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_s_assignment"
@@ -1130,7 +1135,7 @@ def test_shebang_interpreter_env_dash_s_assignment_before_interpreter(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_dash_s_flag_before_interpreter(tmp_path):
+def case_shebang_interpreter_env_dash_s_flag_before_interpreter(tmp_path):
     """`-S` payload may carry env flags (e.g. -i) before the interpreter."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_s_flag"
@@ -1139,7 +1144,7 @@ def test_shebang_interpreter_env_dash_s_flag_before_interpreter(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_long_split_assignment_before_interpreter(tmp_path):
+def case_shebang_interpreter_env_long_split_assignment_before_interpreter(tmp_path):
     """`--split-string=` payload may carry assignments before the interpreter."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_long_split_assignment"
@@ -1151,7 +1156,7 @@ def test_shebang_interpreter_env_long_split_assignment_before_interpreter(tmp_pa
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_long_split_flag_before_interpreter(tmp_path):
+def case_shebang_interpreter_env_long_split_flag_before_interpreter(tmp_path):
     """`--split-string=` payload may carry env flags before the interpreter."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_long_split_flag"
@@ -1160,7 +1165,7 @@ def test_shebang_interpreter_env_long_split_flag_before_interpreter(tmp_path):
     assert classify_file(script) == FileType.CODE
 
 
-def test_shebang_interpreter_env_nested_split_string_rejected(tmp_path):
+def case_shebang_interpreter_env_nested_split_string_rejected(tmp_path):
     """A `-S` payload that itself starts with `-S` is rejected (allow_split=False
     on the recursive call bounds the recursion depth at one). Without this guard,
     a malicious or strange shebang could spin the parser indefinitely."""
@@ -1172,10 +1177,177 @@ def test_shebang_interpreter_env_nested_split_string_rejected(tmp_path):
     assert _shebang_interpreter(script) is None
 
 
-def test_shebang_interpreter_env_vs_assignment_before_interpreter(tmp_path):
+def case_shebang_interpreter_env_vs_assignment_before_interpreter(tmp_path):
     """`-vS` packed payload also re-parses for leading assignments."""
     from graph3d.detect import _shebang_interpreter
     script = tmp_path / "env_vs_assignment"
     script.write_bytes(b"#!/usr/bin/env -vS DEBUG=1 python3 -u\nprint('x')\n")
     assert _shebang_interpreter(script) == "python3"
     assert classify_file(script) == FileType.CODE
+
+
+# Table-driven drivers. The legacy cases above are intentionally not collected
+# directly; these four tests keep pytest's reported case count focused while
+# preserving the original behavior, branches, and regression coverage.
+
+
+def _run_case_table(cases, fixtures):
+    failures = []
+    base_tmp_path = fixtures.get("tmp_path")
+    for index, (name, func) in enumerate(cases):
+        try:
+            params = func.__code__.co_varnames[:func.__code__.co_argcount]
+            kwargs = {key: value for key, value in fixtures.items() if key in params and key != "tmp_path"}
+            if "tmp_path" in params:
+                case_tmp_path = base_tmp_path / f"case_{index:03d}"
+                case_tmp_path.mkdir(parents=True, exist_ok=True)
+                kwargs["tmp_path"] = case_tmp_path
+            func(**kwargs)
+        except AssertionError as exc:
+            failures.append(f"{name}: {exc}")
+        except Exception as exc:
+            failures.append(f"{name}: {type(exc).__name__}: {exc}")
+    assert not failures, "case failures:\n" + "\n".join(failures)
+
+
+def test_detect_file_type_classification(tmp_path):
+    cases = [
+        ("python extension", case_classify_python),
+        ("typescript extension", case_classify_typescript),
+        ("markdown extension", case_classify_markdown),
+        ("pdf extension", case_classify_pdf),
+        ("xcassets nested pdf skipped", case_classify_pdf_in_xcassets_skipped),
+        ("xcassets root pdf skipped", case_classify_pdf_in_xcassets_root_skipped),
+        ("unknown extension returns none", case_classify_unknown_returns_none),
+        ("image extensions", case_classify_image),
+        ("fixture markdown word count", case_count_words_sample_md),
+        ("markdown paper signals", case_classify_md_paper_by_signals),
+        ("markdown document without paper signals", case_classify_md_doc_without_signals),
+        ("real attention paper when present", case_classify_attention_paper),
+        ("video and audio extensions", case_classify_video_extensions),
+        ("google workspace shortcut extensions", case_classify_google_workspace_shortcuts),
+        ("sensitive api token", case_sensitive_flags_api_token_txt),
+        ("sensitive oauth token", case_sensitive_flags_oauth_token_json),
+        ("sensitive underscore secret", case_sensitive_flags_underscore_secret),
+        ("tokenizer false positive avoided", case_sensitive_does_not_flag_tokenizer_py),
+        ("tokenize false positive avoided", case_sensitive_does_not_flag_tokenize_py),
+        ("passwords code file sensitive", case_sensitive_flags_passwords_py),
+        ("ssh directory sensitive", case_sensitive_flags_ssh_dir),
+        ("secrets directory sensitive", case_sensitive_flags_secrets_dir),
+        ("token txt sensitive", case_sensitive_flags_token_txt),
+        ("credentials json sensitive", case_sensitive_flags_credentials_json),
+        ("root credentials file handled by name pattern", case_sensitive_does_not_flag_root_file_named_credentials),
+        ("secret underscore suffix sensitive", case_sensitive_secret_handler_txt),
+        ("token underscore suffix sensitive", case_sensitive_token_config_yaml),
+        ("plain shebang interpreter", case_shebang_interpreter_plain),
+        ("env shebang single arg", case_shebang_interpreter_env_single_arg),
+        ("env dash S shebang", case_shebang_interpreter_env_dash_s),
+        ("env flags shebang", case_shebang_interpreter_env_with_flags),
+        ("env assignment shebang", case_shebang_interpreter_env_with_assignment),
+        ("no shebang", case_shebang_interpreter_no_shebang),
+        ("quoted shebang path", case_shebang_interpreter_quoted_path),
+        ("shebang classifies extensionless code", case_shebang_file_type_classifies_via_interpreter),
+        ("missing shebang file", case_shebang_interpreter_unreadable_returns_none),
+        ("env unset operand", case_shebang_interpreter_env_unset_with_operand),
+        ("env chdir operand", case_shebang_interpreter_env_chdir_with_operand),
+        ("env path operand", case_shebang_interpreter_env_path_with_operand),
+        ("env dash S after flag", case_shebang_interpreter_env_dash_s_after_flag),
+        ("env clumped unset operand", case_shebang_interpreter_env_clumped_u_operand),
+        ("env missing operand", case_shebang_interpreter_env_missing_operand_returns_none),
+        ("env split string equals", case_shebang_interpreter_env_gnu_split_string_equals),
+        ("env split string separate", case_shebang_interpreter_env_gnu_split_string_separate),
+        ("env argv0 operand", case_shebang_interpreter_env_gnu_argv0_operand),
+        ("env compact dash S", case_shebang_interpreter_env_compact_dash_s),
+        ("env compact v then S", case_shebang_interpreter_env_compact_v_then_s),
+        ("env long unset separate", case_shebang_interpreter_env_long_unset_separate_operand),
+        ("env long unset equals", case_shebang_interpreter_env_long_unset_equals),
+        ("env long chdir separate", case_shebang_interpreter_env_long_chdir_separate_operand),
+        ("env long chdir equals", case_shebang_interpreter_env_long_chdir_equals),
+        ("env signal flags", case_shebang_interpreter_env_signal_flags),
+        ("env unknown option rejected", case_shebang_interpreter_env_unknown_option_returns_none),
+        ("env dash S assignment before interpreter", case_shebang_interpreter_env_dash_s_assignment_before_interpreter),
+        ("env dash S flag before interpreter", case_shebang_interpreter_env_dash_s_flag_before_interpreter),
+        ("env long split assignment before interpreter", case_shebang_interpreter_env_long_split_assignment_before_interpreter),
+        ("env long split flag before interpreter", case_shebang_interpreter_env_long_split_flag_before_interpreter),
+        ("env nested split string rejected", case_shebang_interpreter_env_nested_split_string_rejected),
+        ("env vS assignment before interpreter", case_shebang_interpreter_env_vs_assignment_before_interpreter),
+    ]
+    _run_case_table(cases, {"tmp_path": tmp_path})
+
+
+def test_detect_corpus_counts_and_limits(tmp_path, monkeypatch):
+    cases = [
+        ("detect finds fixtures", case_detect_finds_fixtures),
+        ("detect warns small corpus", case_detect_warns_small_corpus),
+        ("google workspace shortcut skipped by default", case_detect_skips_google_workspace_shortcuts_by_default),
+        ("google workspace shortcut converted when enabled", case_detect_converts_google_workspace_shortcuts_when_enabled),
+        ("video key always present", case_detect_includes_video_key),
+        ("video file detected", case_detect_finds_video_files),
+        ("video excluded from word count", case_detect_video_not_in_words),
+        ("product profile excludes non-product layers", case_detect_product_profile_excludes_non_product_layers),
+        ("tests profile focuses tests and fixtures", case_detect_tests_profile_focuses_tests_and_fixtures),
+        ("schemas profile includes schema sql mcp api", case_detect_schemas_profile_includes_schema_sql_mcp_and_api_files),
+        ("all profile matches legacy behavior", case_detect_all_profile_matches_legacy_full_repo_layers),
+        ("failed semantic chunks omitted from manifest", case_save_manifest_skips_semantic_hash_for_files_without_cache),
+        ("code manifest stamping unchanged", case_save_manifest_without_filter_unchanged_for_code),
+    ]
+    _run_case_table(cases, {"tmp_path": tmp_path, "monkeypatch": monkeypatch})
+
+
+def test_detect_ignore_and_recursion(tmp_path):
+    cases = [
+        ("noise dot dirs skipped", case_detect_skips_noise_dot_dirs),
+        ("graph3dignore excludes file", case_graph3dignore_excludes_file),
+        ("graph3dignore missing is fine", case_graph3dignore_missing_is_fine),
+        ("graph3dignore comments ignored", case_graph3dignore_comments_ignored),
+        ("graph3dignore hermetic without vcs", case_graph3dignore_hermetic_without_vcs),
+        ("graph3dignore discovered from parent in vcs", case_graph3dignore_discovered_from_parent_in_vcs),
+        ("graph3dignore stops at git boundary", case_graph3dignore_stops_at_git_boundary),
+        ("graph3dignore at git root included", case_graph3dignore_at_git_root_is_included),
+        ("coverage dir skipped", case_detect_skips_coverage_dir),
+        ("visual tests dir skipped", case_detect_skips_visual_tests_dir),
+        ("snapshots dir skipped", case_detect_skips_snapshots_dir),
+        ("storybook static dir skipped", case_detect_skips_storybook_static_dir),
+        ("github dot dir allowed", case_detect_allows_github_dir),
+        ("next cache skipped", case_detect_skips_next_cache),
+        ("graph3d own cache skipped", case_detect_skips_graph3d_own_cache),
+        ("negation cannot rescue file under excluded dir", case_negation_cannot_rescue_file_under_excluded_dir),
+        ("negation works without excluded ancestor", case_negation_works_when_no_ancestor_excluded),
+        ("negation ancestor itself reincluded", case_negation_ancestor_itself_reincluded),
+        ("anchored dir not matched at depth", case_anchored_dir_not_matched_at_depth),
+        ("anchored dir matches at root", case_anchored_dir_matches_at_root),
+        ("anchored file not matched at depth", case_anchored_file_not_matched_at_depth),
+        ("unanchored dir still matches at depth", case_unanchored_dir_still_matches_at_depth),
+        ("anchored multi segment pattern", case_anchored_multi_segment_pattern),
+        ("gitignore fallback when no graph3dignore", case_gitignore_fallback_when_no_graph3dignore),
+        ("graph3dignore precedence over gitignore", case_graph3dignore_takes_precedence_over_gitignore),
+        ("worktrees dir skipped", case_detect_skips_worktrees_dir),
+        ("nested worktrees dir skipped", case_detect_skips_nested_worktrees_dir),
+        ("extra excludes pattern", case_detect_extra_excludes_pattern),
+    ]
+    _run_case_table(cases, {"tmp_path": tmp_path})
+
+
+def test_detect_edge_cases(tmp_path, monkeypatch):
+    cases = [
+        ("follows symlinked directory when requested", case_detect_follows_symlinked_directory),
+        ("follows symlinked file", case_detect_follows_symlinked_file),
+        ("handles circular symlinks", case_detect_handles_circular_symlinks),
+        ("auto detects direct symlink child", case_detect_auto_detects_direct_symlink_child),
+        ("default does not follow without symlinks", case_detect_default_does_not_follow_when_no_symlinks),
+        ("explicit false overrides auto detect", case_detect_explicit_false_overrides_auto_detect),
+        ("incremental propagates follow symlinks", case_detect_incremental_propagates_follow_symlinks),
+    ]
+    unsupported_root = tmp_path / "unsupported_and_empty"
+    unsupported_root.mkdir()
+    empty_result = detect(unsupported_root)
+    unsupported = unsupported_root / "archive.zip"
+    unsupported.write_bytes(b"zip")
+    unsupported_result = detect(unsupported_root)
+    preflight_failures = []
+    if empty_result["total_files"] != 0 or empty_result["total_words"] != 0:
+        preflight_failures.append(f"empty dir result was files={empty_result['total_files']} words={empty_result['total_words']}")
+    if unsupported_result["total_files"] != 0 or any(unsupported.name in f for f in _all_detected(unsupported_result)):
+        preflight_failures.append(f"unsupported file was detected: {unsupported_result}")
+    assert not preflight_failures, "edge preflight failures:\n" + "\n".join(preflight_failures)
+    _run_case_table(cases, {"tmp_path": tmp_path, "monkeypatch": monkeypatch})
