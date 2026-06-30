@@ -27,6 +27,7 @@ from graph3d.serve import (
     _filter_graph_by_relations,
     _find_node,
     _infer_context_filters,
+    _is_graph3d_out_graph,
     _load_graph,
     _normalize_context_filters,
     _pick_seeds,
@@ -373,6 +374,22 @@ def test_make_view_state() -> None:
             failures.append(f"{name}: structure mismatch {state}")
         if name == "full" and (state["hidden_patterns"] != ["test_*"] or state["lod_level"] != "high"):
             failures.append(f"{name}: hidden/lod mismatch {state}")
+    assert not failures, "\n".join(failures)
+
+
+def test_is_graph3d_out_graph(tmp_path: Path) -> None:
+    inside = tmp_path / "graph3d-out" / "graph.json"
+    inside.parent.mkdir(parents=True)
+    inside.write_text("{}")
+    cases = [
+        (inside, True),
+        (tmp_path / "graph.json", False),
+        (tmp_path / "other" / "graph.json", False),
+    ]
+    failures = []
+    for path, expected in cases:
+        if _is_graph3d_out_graph(path) != expected:
+            failures.append(f"{path}: expected {expected}")
     assert not failures, "\n".join(failures)
 
 

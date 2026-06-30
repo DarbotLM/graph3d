@@ -1,0 +1,88 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "graph3d-apim",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/graphs/build": {
+      "post": {
+        "operationId": "buildGraph",
+        "responses": {
+          "202": {
+            "description": "Build accepted"
+          }
+        }
+      }
+    },
+    "/graphs/update": {
+      "post": {
+        "operationId": "updateGraph",
+        "responses": {
+          "202": {
+            "description": "Update accepted"
+          }
+        }
+      }
+    },
+    "/graphs/{graphId}": {
+      "get": {
+        "operationId": "getGraph",
+        "parameters": [{ "$ref": "#/components/parameters/graphId" }],
+        "responses": { "200": { "description": "Graph metadata" } }
+      }
+    },
+    "/graphs/{graphId}/report": {
+      "get": {
+        "operationId": "getGraphReport",
+        "parameters": [{ "$ref": "#/components/parameters/graphId" }],
+        "responses": { "200": { "description": "Report markdown" } }
+      }
+    },
+    "/graphs/{graphId}/query": {
+      "post": {
+        "operationId": "queryGraph",
+        "parameters": [{ "$ref": "#/components/parameters/graphId" }],
+        "responses": { "200": { "description": "Query result" } }
+      }
+    },
+    "/graphs/{graphId}/path": {
+      "post": {
+        "operationId": "pathGraph",
+        "parameters": [{ "$ref": "#/components/parameters/graphId" }],
+        "responses": { "200": { "description": "Path result" } }
+      }
+    },
+    "/graphs/{graphId}/explain": {
+      "post": {
+        "operationId": "explainGraph",
+        "parameters": [{ "$ref": "#/components/parameters/graphId" }],
+        "responses": { "200": { "description": "Explain result" } }
+      }
+    },
+    "/graphs/{graphId}/affected": {
+      "post": {
+        "operationId": "affectedGraph",
+        "parameters": [{ "$ref": "#/components/parameters/graphId" }],
+        "responses": { "200": { "description": "Affected result" } }
+      }
+    },
+    "/graphs/{graphId}/exports": {
+      "post": {
+        "operationId": "exportGraph",
+        "parameters": [{ "$ref": "#/components/parameters/graphId" }],
+        "responses": { "200": { "description": "Export result" } }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "graphId": {
+        "name": "graphId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" }
+      }
+    }
+  }
+}
