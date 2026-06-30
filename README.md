@@ -40,6 +40,15 @@ graph3d-out/
 └── graph.json       the full graph — query it anytime without re-reading your files
 ```
 
+For an interactive 3D bitdot cube — node/cluster plotter with layer slicing
+(vertical, horizontal, crosswise), single-node neighborhood focus, cluster
+isolation, a source-to-destination path finder, and connection-pattern filters
+(including schema paths):
+
+```bash
+graph3d export bitdot-cube
+```
+
 For a readable architecture page with Mermaid call-flow diagrams, run:
 
 ```bash
@@ -280,6 +289,7 @@ You can also set `GRAPH3D_GOOGLE_WORKSPACE=1`. Graph3d exports shortcuts into
 /graph3d . --no-viz               # skip the HTML, just the report + JSON
 /graph3d . --wiki                 # build a markdown wiki from the graph
 graph3d export callflow-html      # Mermaid architecture/call-flow HTML (auto-regenerates on every git commit if hook is installed)
+graph3d export bitdot-cube        # graph3d-out/bitdot-cube.html with 3D layer slicing
 
 /graph3d query "what connects auth to the database?"
 /graph3d path "UserService" "DatabasePool"
@@ -352,7 +362,9 @@ python -m graph3d.serve graph3d-out/graph.json
 kimi mcp add --transport stdio graph3d -- python -m graph3d.serve graph3d-out/graph.json
 ```
 
-The MCP server gives your assistant structured access: `query_graph`, `get_node`, `get_neighbors`, `shortest_path`, `list_prs`, `get_pr_impact`, `triage_prs`.
+The MCP server gives your assistant structured access: `query_graph`, `get_node`, `get_neighbors`, `shortest_path`, `render_cube`, `list_prs`, `get_pr_impact`, `triage_prs`.
+
+`query_graph`, `get_neighbors`, and `render_cube` also accept **friendly relation words** — `dataflow`, `call`, `import`, `containment`, `reference`, `schema`, `hierarchy`, `rationale` — that resolve to the underlying edge predicates, so you can ask for "the dataflow around X" without knowing the exact relation names. When an inferred filter would isolate the seed nodes it degrades gracefully to an unfiltered view; an explicitly supplied relation is always honored. `render_cube` writes `graph3d-out/bitdot-cube.html` and returns a `graph3d.viewstate/1` payload so a human can reopen the exact 3D view the assistant used.
 
 > **WSL / Linux note:** Ubuntu ships `python3`, not `python`. Use a venv to avoid conflicts:
 > ```bash
@@ -528,6 +540,8 @@ graph3d export callflow-html                       # graph3d-out/<project>-callf
 graph3d export callflow-html --max-sections 8      # cap generated architecture sections
 graph3d export callflow-html --output docs/arch.html
 graph3d export callflow-html ./some-repo/graph3d-out
+graph3d export bitdot-cube                         # 3D node/cluster plotter: slicing, focus, path finder, pattern filters
+graph3d export bitdot-cube --node-limit 8000       # override the default visualization node limit
 
 graph3d global add graph3d-out/graph.json myrepo   # register a project graph into ~/.graph3d/global.json
 graph3d global remove myrepo                         # remove a project from the global graph

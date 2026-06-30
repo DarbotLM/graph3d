@@ -2,6 +2,14 @@
 
 Full release notes with details on each version: [GitHub Releases](https://github.com/DarbotLM/graph3d/releases)
 
+## Unreleased
+
+- Feat: `graph3d export bitdot-cube` renders an interactive 3D bitdot-cube plotter — node/cluster view with vertical/horizontal/crosswise layer slicing, single-node neighborhood focus, cluster isolation, a source-to-destination path finder, shape-by-node-kind, relation-colored links, and connection-pattern filters grouped by canonical relation family.
+- Feat: `render_cube` MCP tool resolves a natural-language question (optionally narrowed by a friendly relation word) to a bounded subgraph, writes `bitdot-cube.html`, and returns a `graph3d.viewstate/1` payload so a human can reopen the exact 3D view the assistant used.
+- Feat: friendly relation vocabulary — `query_graph`, `get_neighbors`, and `render_cube` accept umbrella words (`dataflow`, `call`, `import`, `containment`, `reference`, `schema`, `hierarchy`, `rationale`) that resolve to underlying edge predicates, with graceful fallback when an inferred filter would isolate the seed nodes and explicit relations always honored.
+- Feat: canonical terminology layer (`graph3d/terminology.py` plus shipped `graph3d/schemas/*.json`) provides strong-name resolution mapping human/Obsidian/Karpathy-style words (nodes, links, schema, path pattern, dataflow) to the graph object model.
+- Chore: consolidated the test suite from ~1557 single-assert functions into ~68 table-driven functions across 10 domain files, preserving coverage.
+
 ## 0.8.27 (2026-06-15)
 
 - Feat: schema-path extraction for JSON Schema/API-style files, with global schema terminal and pattern nodes for cross-family correlation.

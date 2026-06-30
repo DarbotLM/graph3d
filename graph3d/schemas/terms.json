@@ -1,0 +1,367 @@
+{
+  "registry_version": "1.0",
+  "systems": [
+    "graph3d",
+    "obsidian",
+    "txt2kg",
+    "graphrag",
+    "neo4j",
+    "rdf",
+    "networkx",
+    "karpathy_llmos"
+  ],
+  "terms": [
+    {
+      "strong_name": "g3dkg:core.KnowledgeGraph",
+      "friendly": "knowledge graph",
+      "aliases": [
+        "graph",
+        "kg",
+        "knowledge-graph",
+        "network",
+        "web",
+        "second-brain"
+      ],
+      "definition": "The whole typed graph of nodes, links, clusters, and provenance — the graph3d.json document.",
+      "maps": {
+        "graph3d": "graph.json document (NetworkX node_link_data)",
+        "obsidian": "the vault",
+        "txt2kg": "the knowledge graph (set of triples)",
+        "graphrag": "the index (entities + relationships + communities)",
+        "neo4j": "the graph / database",
+        "rdf": "RDF dataset / named graph",
+        "networkx": "Graph",
+        "karpathy_llmos": "the disk / long-term memory store"
+      }
+    },
+    {
+      "strong_name": "g3dkg:core.Node",
+      "friendly": "node",
+      "aliases": [
+        "entity",
+        "bitdot",
+        "vertex",
+        "point"
+      ],
+      "definition": "A named thing in the graph: a function, file, doc-section, or concept.",
+      "maps": {
+        "graph3d": "nodes[] {id,label,file_type,source_file,community}",
+        "obsidian": "note (.md file)",
+        "txt2kg": "entity (head/tail of a triple)",
+        "graphrag": "Entity {title,type,description}",
+        "neo4j": "node (:Label)",
+        "rdf": "subject / resource (IRI)",
+        "networkx": "node",
+        "karpathy_llmos": "a memory record / page"
+      }
+    },
+    {
+      "strong_name": "g3dkg:core.Link",
+      "friendly": "link",
+      "aliases": [
+        "edge",
+        "relationship",
+        "connection",
+        "association",
+        "arc"
+      ],
+      "definition": "A typed, directional, confidence-scored connection between two nodes (source -> target).",
+      "maps": {
+        "graph3d": "links[] {source,target,relation,confidence,confidence_score}",
+        "obsidian": "[[wikilink]] / backlink",
+        "txt2kg": "relation (the middle of a triple)",
+        "graphrag": "Relationship {source,target,weight,description}",
+        "neo4j": "relationship [:TYPE]",
+        "rdf": "predicate (triple)",
+        "networkx": "edge",
+        "karpathy_llmos": "an association / pointer"
+      }
+    },
+    {
+      "strong_name": "g3dkg:core.NodeType",
+      "friendly": "shape",
+      "aliases": [
+        "kind",
+        "node-type",
+        "file-type",
+        "category",
+        "node-shape"
+      ],
+      "definition": "The class of a node, rendered as a SHAPE in 3dkg (code, document, schema, ...).",
+      "maps": {
+        "graph3d": "file_type in {code,document,paper,image,rationale,concept,schema,data}",
+        "obsidian": "frontmatter `type:` / tag",
+        "txt2kg": "entity type",
+        "graphrag": "entity type (PERSON/ORG/GEO/EVENT)",
+        "neo4j": "node label (:Label)",
+        "rdf": "rdf:type / class",
+        "networkx": "node attribute",
+        "karpathy_llmos": "—"
+      }
+    },
+    {
+      "strong_name": "g3dkg:core.Predicate",
+      "friendly": "relation",
+      "aliases": [
+        "link-type",
+        "predicate",
+        "relationship-type",
+        "verb",
+        "edge-label"
+      ],
+      "definition": "The controlled-vocabulary label on a link (calls, imports, contains, references, ...).",
+      "maps": {
+        "graph3d": "relation (string on each link)",
+        "obsidian": "implicit (all wikilinks share one untyped relation)",
+        "txt2kg": "predicate",
+        "graphrag": "relationship description",
+        "neo4j": "relationship type",
+        "rdf": "predicate (property IRI)",
+        "networkx": "edge 'relation' attribute",
+        "karpathy_llmos": "—"
+      }
+    },
+    {
+      "strong_name": "g3dkg:cluster.Cluster",
+      "friendly": "cluster",
+      "aliases": [
+        "community",
+        "region",
+        "group",
+        "neighborhood",
+        "module"
+      ],
+      "definition": "A densely-connected group of nodes found by Leiden; colors nodes in 3dkg.",
+      "maps": {
+        "graph3d": "community (int) via cluster.py Leiden",
+        "obsidian": "folder / MOC grouping",
+        "txt2kg": "entity cluster",
+        "graphrag": "community (hierarchical Leiden)",
+        "neo4j": "community / partition",
+        "rdf": "named graph (loosely)",
+        "networkx": "community partition",
+        "karpathy_llmos": "a region of memory"
+      }
+    },
+    {
+      "strong_name": "g3dkg:cluster.ClusterReport",
+      "friendly": "cluster summary",
+      "aliases": [
+        "community-report",
+        "region-summary",
+        "moc",
+        "map-of-content",
+        "overview"
+      ],
+      "definition": "A structured/LLM summary of a cluster (title, summary, findings) for global sensemaking.",
+      "maps": {
+        "graph3d": "GRAPH_REPORT.md / community labels / community_reports.py (planned)",
+        "obsidian": "MOC note (Map of Content)",
+        "txt2kg": "—",
+        "graphrag": "community report {title,summary,findings}",
+        "neo4j": "—",
+        "rdf": "—",
+        "networkx": "—",
+        "karpathy_llmos": "a precomputed summary page"
+      }
+    },
+    {
+      "strong_name": "g3dkg:query.PathPattern",
+      "friendly": "path pattern",
+      "aliases": [
+        "path",
+        "route",
+        "trail",
+        "walk",
+        "traversal",
+        "link-chain"
+      ],
+      "definition": "An ordered sequence of nodes joined by links (a shortest path, call chain, or schema path).",
+      "maps": {
+        "graph3d": "shortest_path() / BFS in serve.py / relation chains",
+        "obsidian": "a link path between notes",
+        "txt2kg": "path (chain of triples)",
+        "graphrag": "relationship path / multi-hop traversal",
+        "neo4j": "Cypher path pattern (a)-[]->(b)",
+        "rdf": "SPARQL property path",
+        "networkx": "path",
+        "karpathy_llmos": "a reasoning trace / chain"
+      }
+    },
+    {
+      "strong_name": "g3dkg:flow.Dataflow",
+      "friendly": "dataflow",
+      "aliases": [
+        "flow",
+        "call-flow",
+        "pipeline",
+        "control-flow",
+        "data-lineage"
+      ],
+      "definition": "A directed flow of execution or data through the graph (calls, imports, reads/writes).",
+      "maps": {
+        "graph3d": "callflow_html.py + calls/imports edges",
+        "obsidian": "—",
+        "txt2kg": "—",
+        "graphrag": "—",
+        "neo4j": "directed traversal",
+        "rdf": "—",
+        "networkx": "directed subgraph",
+        "karpathy_llmos": "the wiring between modules (Software 1.0 control flow)"
+      }
+    },
+    {
+      "strong_name": "g3dkg:schema.SchemaPath",
+      "friendly": "schema path",
+      "aliases": [
+        "data-shape",
+        "schema-pattern",
+        "key-path",
+        "structural-path",
+        "json-path"
+      ],
+      "definition": "A structural path through a data schema (JSON/SQLite) extracted as schema nodes/edges.",
+      "maps": {
+        "graph3d": "schema_paths.py (schema_pattern/schema_terminal/schema_type/sqlite_*)",
+        "obsidian": "—",
+        "txt2kg": "—",
+        "graphrag": "covariate / claim (loosely)",
+        "neo4j": "property key path",
+        "rdf": "SHACL shape (loosely)",
+        "networkx": "—",
+        "karpathy_llmos": "the shape of the data (Software 2.0 dataset schema)"
+      }
+    },
+    {
+      "strong_name": "g3dkg:core.Hyperedge",
+      "friendly": "hyperedge",
+      "aliases": [
+        "group-relation",
+        "n-ary-link",
+        "hypergraph-edge"
+      ],
+      "definition": "A relation among three or more nodes (a group / region relationship).",
+      "maps": {
+        "graph3d": "hyperedges[] {id,label,nodes[]}",
+        "obsidian": "group / MOC",
+        "txt2kg": "n-ary relation",
+        "graphrag": "—",
+        "neo4j": "reified node",
+        "rdf": "reified statement / RDF*",
+        "networkx": "—",
+        "karpathy_llmos": "—"
+      }
+    },
+    {
+      "strong_name": "g3dkg:meta.Provenance",
+      "friendly": "source",
+      "aliases": [
+        "provenance",
+        "citation",
+        "origin",
+        "evidence",
+        "reference",
+        "source-file",
+        "source-location"
+      ],
+      "definition": "Where a node/link came from (file, location, extractor, model, commit) — for citation and trust. Note: a link's structural endpoints are the source_node/target_node fields, distinct from this origin.",
+      "maps": {
+        "graph3d": "source_file, source_location, provenance{extractor,model}, built_at_commit",
+        "obsidian": "the source note / link target",
+        "txt2kg": "source text span",
+        "graphrag": "text_unit_ids",
+        "neo4j": "property metadata",
+        "rdf": "PROV-O / named graph",
+        "networkx": "node/edge attribute",
+        "karpathy_llmos": "the citation that grounds the memory"
+      }
+    },
+    {
+      "strong_name": "g3dkg:meta.Confidence",
+      "friendly": "confidence",
+      "aliases": [
+        "trust",
+        "certainty",
+        "strength",
+        "score",
+        "weight"
+      ],
+      "definition": "How sure we are a node/link is real: an enum plus a 0-1 score.",
+      "maps": {
+        "graph3d": "confidence in {EXTRACTED,INFERRED,AMBIGUOUS} + confidence_score (0-1)",
+        "obsidian": "— (links are binary)",
+        "txt2kg": "extraction score",
+        "graphrag": "relationship weight (1-10)",
+        "neo4j": "property",
+        "rdf": "—",
+        "networkx": "edge attribute",
+        "karpathy_llmos": "signal vs noise in memory"
+      }
+    },
+    {
+      "strong_name": "g3dkg:ui.ViewState",
+      "friendly": "view",
+      "aliases": [
+        "lens",
+        "camera",
+        "viewpoint",
+        "focus",
+        "scene"
+      ],
+      "definition": "The current 3dkg view: focus node, slice, path highlight, cluster isolation, camera.",
+      "maps": {
+        "graph3d": "graph3d.viewstate/1 (bitdot_cube template JSON)",
+        "obsidian": "Graph View settings / local graph",
+        "txt2kg": "—",
+        "graphrag": "—",
+        "neo4j": "browser view",
+        "rdf": "—",
+        "networkx": "—",
+        "karpathy_llmos": "what is currently in RAM (the context window)"
+      }
+    },
+    {
+      "strong_name": "g3dkg:core.Label",
+      "friendly": "label",
+      "aliases": [
+        "name",
+        "title",
+        "display-name",
+        "caption"
+      ],
+      "definition": "The human-readable name of a node.",
+      "maps": {
+        "graph3d": "label (+ norm_label normalized form)",
+        "obsidian": "note title / [[alias]]",
+        "txt2kg": "entity name",
+        "graphrag": "title",
+        "neo4j": "name property",
+        "rdf": "rdfs:label",
+        "networkx": "node 'label' attribute",
+        "karpathy_llmos": "—"
+      }
+    },
+    {
+      "strong_name": "g3dkg:core.Identifier",
+      "friendly": "id",
+      "aliases": [
+        "node-id",
+        "key",
+        "identifier",
+        "canonical-id",
+        "slug"
+      ],
+      "definition": "The stable unique identifier of a node.",
+      "maps": {
+        "graph3d": "id (+ canonical_id planned)",
+        "obsidian": "filename / slug",
+        "txt2kg": "entity id",
+        "graphrag": "id / human_readable_id",
+        "neo4j": "element id / key",
+        "rdf": "IRI",
+        "networkx": "node key",
+        "karpathy_llmos": "the address / pointer"
+      }
+    }
+  ]
+}

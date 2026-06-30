@@ -2688,9 +2688,10 @@ def main() -> None:
 
     elif cmd == "export":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
-        if subcmd not in ("html", "callflow-html", "obsidian", "wiki", "svg", "graphml", "neo4j"):
+        if subcmd not in ("html", "bitdot-cube", "callflow-html", "obsidian", "wiki", "svg", "graphml", "neo4j"):
             print("Usage: graph3d export <format>", file=sys.stderr)
             print("  html      [--graph PATH] [--labels PATH] [--node-limit N] [--no-viz]", file=sys.stderr)
+            print("  bitdot-cube [--graph PATH] [--labels PATH] [--node-limit N]", file=sys.stderr)
             print("  callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH] [--report PATH] [--sections PATH] [--output HTML]", file=sys.stderr)
             print("            [--lang auto|zh-CN|en] [--max-sections N] [--diagram-scale N]", file=sys.stderr)
             print("  obsidian  [--graph PATH] [--labels PATH] [--dir PATH]", file=sys.stderr)
@@ -2890,6 +2891,26 @@ def main() -> None:
                          community_labels=labels or None, node_limit=node_limit)
                 if G.number_of_nodes() <= node_limit:
                     print(f"graph.html written - open in any browser, no server needed")
+
+        elif subcmd == "bitdot-cube":
+            from graph3d.bitdot_cube import to_bitdot_cube_html as _to_bitdot_cube_html
+            target = out_dir / "bitdot-cube.html"
+            try:
+                _to_bitdot_cube_html(
+                    G,
+                    communities,
+                    str(target),
+                    community_labels=labels or None,
+                    node_limit=node_limit,
+                )
+            except ValueError as exc:
+                print(f"bitdot-cube export skipped: {exc}", file=sys.stderr)
+                print(
+                    f"  Raise the cap with: graph3d export bitdot-cube --node-limit {G.number_of_nodes() + 1}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            print(f"bitdot-cube.html written - open in any browser, no server needed")
 
         elif subcmd == "obsidian":
             from graph3d.export import to_obsidian as _to_obsidian, to_canvas as _to_canvas

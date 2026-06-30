@@ -98,7 +98,7 @@ packages = ["graph3d"]
 include-package-data = false
 
 [tool.setuptools.package-data]
-graph3d = ["skill.md", "skill-codex.md", "skill-opencode.md", "skill-aider.md", "skill-amp.md", "skill-copilot.md", "skill-claw.md", "skill-windows.md", "skill-droid.md", "skill-trae.md", "skill-kiro.md", "skill-vscode.md", "skill-pi.md", "skill-devin.md"]
+graph3d = ["skill.md", "skill-codex.md", "skill-opencode.md", "skill-aider.md", "skill-amp.md", "skill-copilot.md", "skill-claw.md", "skill-windows.md", "skill-droid.md", "skill-trae.md", "skill-kiro.md", "skill-vscode.md", "skill-pi.md", "skill-devin.md", "schemas/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

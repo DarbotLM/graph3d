@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://graph3d.dev/schemas/graph-object-model.schema.json",
+  "title": "graph3d Knowledge Graph — canonical object model",
+  "description": "Hardened schema for the graph.json document produced by graph3d.export.to_json (NetworkX node_link_data, edges='links'). Each definition carries an x-strong-name from graph3d.terminology so friendly words resolve to one canonical concept. Permissive (additionalProperties:true) to stay forward-compatible while pinning the canonical fields and enums.",
+  "x-strong-name": "g3dkg:core.KnowledgeGraph",
+  "x-registry-version": "1.0",
+  "type": "object",
+  "required": ["nodes", "links"],
+  "properties": {
+    "directed": { "type": "boolean" },
+    "multigraph": { "type": "boolean" },
+    "graph": { "type": "object" },
+    "nodes": {
+      "type": "array",
+      "description": "g3dkg:core.Node collection.",
+      "items": { "$ref": "#/$defs/Node" }
+    },
+    "links": {
+      "type": "array",
+      "description": "g3dkg:core.Link collection (NetworkX 'links' key).",
+      "items": { "$ref": "#/$defs/Link" }
+    },
+    "hyperedges": {
+      "type": "array",
+      "description": "g3dkg:core.Hyperedge collection (relations among 3+ nodes).",
+      "items": { "$ref": "#/$defs/Hyperedge" }
+    },
+    "graph3d_schema": { "$ref": "#/$defs/SchemaStamp" },
+    "graph3d_metadata": { "type": "object" },
+    "built_at_commit": { "type": "string" }
+  },
+  "$defs": {
+    "Node": {
+      "title": "Node",
+      "x-strong-name": "g3dkg:core.Node",
+      "x-friendly": "node",
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "description": "g3dkg:core.Identifier — stable unique id." },
+        "label": { "type": "string", "description": "g3dkg:core.Label — human-readable name." },
+        "norm_label": { "type": "string", "description": "Normalized (diacritic-stripped, lowercased) label." },
+        "file_type": { "$ref": "#/$defs/NodeType" },
+        "community": { "type": ["integer", "string", "null"], "description": "g3dkg:cluster.Cluster id." },
+        "community_level": { "type": ["integer", "null"], "description": "Hierarchical cluster depth (planned v1.1)." },
+        "parent_community": { "type": ["integer", "string", "null"], "description": "Parent cluster id (planned v1.1)." },
+        "source_file": { "type": ["string", "null"], "description": "g3dkg:meta.Provenance — origin file." },
+        "source_location": { "type": ["string", "null"], "description": "g3dkg:meta.Provenance — origin location (e.g. L42)." },
+        "canonical_id": { "type": ["string", "null"], "description": "Dedup survivor id (planned v1.1)." },
+        "aliases": { "type": "array", "items": { "type": "string" }, "description": "Alternative labels (planned v1.1)." },
+        "confidence_score": { "$ref": "#/$defs/ConfidenceScore" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "Link": {
+      "title": "Link",
+      "x-strong-name": "g3dkg:core.Link",
+      "x-friendly": "link",
+      "type": "object",
+      "required": ["source", "target"],
+      "additionalProperties": true,
+      "properties": {
+        "source": { "type": "string", "description": "Source node id (structural endpoint)." },
+        "target": { "type": "string", "description": "Target node id (structural endpoint)." },
+        "relation": { "type": "string", "description": "g3dkg:core.Predicate — typed link label (calls, imports, contains, ...)." },
+        "confidence": { "$ref": "#/$defs/Confidence" },
+        "confidence_score": { "$ref": "#/$defs/ConfidenceScore" },
+        "source_file": { "type": ["string", "null"], "description": "g3dkg:meta.Provenance — origin file for this link." },
+        "context": { "type": ["string", "null"], "description": "Evidence/context snippet." },
+        "provenance": {
+          "type": "object",
+          "description": "g3dkg:meta.Provenance — how this link was produced (planned v1.1).",
+          "properties": {
+            "extractor": { "type": "string" },
+            "rule_id": { "type": "string" },
+            "model": { "type": "string" }
+          }
+        }
+      }
+    },
+    "Hyperedge": {
+      "title": "Hyperedge",
+      "x-strong-name": "g3dkg:core.Hyperedge",
+      "x-friendly": "hyperedge",
+      "type": "object",
+      "required": ["id", "nodes"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "nodes": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+        "confidence": { "$ref": "#/$defs/Confidence" }
+      }
+    },
+    "SchemaStamp": {
+      "title": "SchemaStamp",
+      "x-strong-name": "g3dkg:meta.Provenance",
+      "type": "object",
+      "required": ["kind", "version"],
+      "properties": {
+        "kind": { "type": "string", "description": "e.g. graph3d.graph.json.schema-core" },
+        "version": { "type": "string", "description": "SemVer schema version (additive=minor, breaking=major)." }
+      }
+    },
+    "NodeType": {
+      "title": "NodeType",
+      "x-strong-name": "g3dkg:core.NodeType",
+      "x-friendly": "shape",
+      "type": "string",
+      "enum": ["code", "document", "paper", "image", "rationale", "concept", "schema", "data"],
+      "description": "Canonical node kind; rendered as a SHAPE in 3dkg."
+    },
+    "Confidence": {
+      "title": "Confidence",
+      "x-strong-name": "g3dkg:meta.Confidence",
+      "x-friendly": "confidence",
+      "type": "string",
+      "enum": ["EXTRACTED", "INFERRED", "AMBIGUOUS"],
+      "description": "Confidence tier of a node/link."
+    },
+    "ConfidenceScore": {
+      "title": "ConfidenceScore",
+      "x-strong-name": "g3dkg:meta.Confidence",
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Calibrated 0-1 confidence score."
+    }
+  }
+}

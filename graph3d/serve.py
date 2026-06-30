@@ -9,6 +9,7 @@ import networkx as nx
 from networkx.readwrite import json_graph
 from graph3d.security import sanitize_label, check_graph_file_size_cap
 from graph3d.build import edge_data
+from graph3d import terminology
 
 try:
     import jieba as _jieba  # type: ignore[import-untyped]
@@ -280,6 +281,28 @@ def _filter_graph_by_context(G: nx.Graph, context_filters: list[str] | None) -> 
     return H
 
 
+def _filter_graph_by_relations(G: nx.Graph, relations: set[str] | None) -> nx.Graph:
+    """Keep only edges whose ``relation`` is in ``relations`` (all nodes retained).
+
+    Used for friendly-word query narrowing, e.g. "dataflow" -> {calls, imports, ...}.
+    Returns the original graph unchanged when ``relations`` is empty/None.
+    """
+    if not relations:
+        return G
+    rels = {str(r).lower() for r in relations}
+    H = G.__class__()
+    H.add_nodes_from(G.nodes(data=True))
+    if isinstance(G, (nx.MultiGraph, nx.MultiDiGraph)):
+        for u, v, key, data in G.edges(keys=True, data=True):
+            if str(data.get("relation", "")).lower() in rels:
+                H.add_edge(u, v, key=key, **data)
+    else:
+        for u, v, data in G.edges(data=True):
+            if str(data.get("relation", "")).lower() in rels:
+                H.add_edge(u, v, **data)
+    return H
+
+
 def _bfs(G: nx.Graph, start_nodes: list[str], depth: int) -> tuple[set[str], list[tuple]]:
     # Compute hub threshold: nodes above this degree are not expanded as transit.
     # p99 of degree distribution, floored at 50 to avoid over-blocking small graphs.
@@ -397,6 +420,7 @@ def _query_graph_text(
     depth: int = 3,
     token_budget: int = 2000,
     context_filters: list[str] | None = None,
+    relations: set[str] | None = None,
 ) -> str:
     terms = _query_terms(question)
     scored = _score_nodes(G, terms)
@@ -405,16 +429,116 @@ def _query_graph_text(
         return "No matching nodes found."
     resolved_filters, filter_source = _resolve_context_filters(question, context_filters)
     traversal_graph = _filter_graph_by_context(G, resolved_filters)
-    nodes, edges = _dfs(traversal_graph, start_nodes, depth) if mode == "dfs" else _bfs(traversal_graph, start_nodes, depth)
+
+    # Friendly-word relation narrowing: explicit `relations` wins; otherwise infer
+    # predicate-group words from the question ("dataflow" -> {calls, imports, ...}).
+    rel_explicit = relations is not None
+    rel_set = relations if rel_explicit else terminology.relations_in_query(question)
+    applied_relations: set[str] = set()
+    if rel_set:
+        rel_graph = _filter_graph_by_relations(traversal_graph, rel_set)
+        rel_nodes, rel_edges = (
+            _dfs(rel_graph, start_nodes, depth) if mode == "dfs"
+            else _bfs(rel_graph, start_nodes, depth)
+        )
+        # Auto-inferred filters degrade gracefully: if they isolate the seeds
+        # (no expansion), fall back to the unfiltered traversal.
+        if rel_explicit or len(rel_nodes) > len(set(start_nodes)):
+            traversal_graph, nodes, edges, applied_relations = rel_graph, rel_nodes, rel_edges, rel_set
+        else:
+            nodes, edges = (
+                _dfs(traversal_graph, start_nodes, depth) if mode == "dfs"
+                else _bfs(traversal_graph, start_nodes, depth)
+            )
+    else:
+        nodes, edges = (
+            _dfs(traversal_graph, start_nodes, depth) if mode == "dfs"
+            else _bfs(traversal_graph, start_nodes, depth)
+        )
+
     header_parts = [
         f"Traversal: {mode.upper()} depth={depth}",
         f"Start: {[G.nodes[n].get('label', n) for n in start_nodes]}",
     ]
     if resolved_filters:
         header_parts.append(f"Context: {', '.join(resolved_filters)} ({filter_source})")
+    if applied_relations:
+        header_parts.append(f"Relations: {', '.join(sorted(applied_relations))}")
     header_parts.append(f"{len(nodes)} nodes found")
     header = " | ".join(header_parts) + "\n\n"
     return header + _subgraph_to_text(traversal_graph, nodes, edges, token_budget)
+
+
+def make_view_state(
+    focus: str | None = None,
+    *,
+    focus_depth: int = 1,
+    cluster_only: int | str | None = None,
+    slice_mode: str = "all",
+    layer: int = 50,
+    thickness: int = 18,
+    source: str | None = None,
+    dest: str | None = None,
+    hidden_patterns: list[str] | None = None,
+    lod_level: str = "auto",
+) -> dict:
+    """Build a ``graph3d.viewstate/1`` payload that the 3dkg renderer accepts.
+
+    Lets an agent steer the human bitdot-cube view (focus a node, open a slice,
+    highlight a source->destination path) from a query result.
+    """
+    return {
+        "schema": "graph3d.viewstate/1",
+        "focus_node": focus,
+        "focus_depth": int(focus_depth),
+        "cluster_only": cluster_only,
+        "slice": {"mode": slice_mode, "layer": int(layer), "thickness": int(thickness)},
+        "highlight_path": ({"source": source, "dest": dest} if source and dest else None),
+        "hidden_patterns": list(hidden_patterns or []),
+        "camera": None,
+        "lod_level": lod_level,
+    }
+
+
+def build_query_subgraph(
+    G: nx.Graph,
+    question: str,
+    *,
+    depth: int = 2,
+    relations: set[str] | None = None,
+    max_nodes: int = 400,
+) -> tuple[nx.Graph, list[str]]:
+    """Resolve a friendly-word query to a bounded subgraph for 3D rendering.
+
+    Returns ``(subgraph, seed_node_ids)``. ``relations`` (explicit or inferred
+    from the question) narrows traversal to a predicate group. The subgraph
+    preserves all original node/edge attributes so it renders identically to a
+    slice of the full graph.
+    """
+    terms = _query_terms(question)
+    seeds = _pick_seeds(_score_nodes(G, terms))
+    if not seeds:
+        return G.__class__(), []
+    rel_explicit = relations is not None
+    rel_set = relations if rel_explicit else terminology.relations_in_query(question)
+    traversal = _filter_graph_by_relations(G, rel_set) if rel_set else G
+    nodes, _edges = _bfs(traversal, seeds, depth)
+    # Auto-inferred relation filters degrade gracefully: if a predicate word in
+    # the question isolates the seeds (no expansion), fall back to the unfiltered
+    # graph so the rendered cube is never a lone point. Explicit caller-supplied
+    # relations are always honored.
+    if rel_set and not rel_explicit and len(nodes) <= len(set(seeds)):
+        nodes, _edges = _bfs(G, seeds, depth)
+    if len(nodes) > max_nodes:
+        # Deterministic cap: always keep the seeds, then highest-degree nodes.
+        keep = set(seeds)
+        ranked = sorted((n for n in nodes if n not in keep), key=lambda n: (-G.degree(n), n))
+        for n in ranked:
+            if len(keep) >= max_nodes:
+                break
+            keep.add(n)
+        nodes = keep
+    return G.subgraph(nodes).copy(), seeds
 
 
 def _find_node(G: nx.Graph, label: str) -> list[str]:
@@ -601,6 +725,28 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
                 },
             ),
             types.Tool(
+                name="render_cube",
+                description=(
+                    "Render a 3D bitdot cube for a query: resolves the question to a subgraph "
+                    "(optionally narrowed by a friendly relation word like 'dataflow', 'schema', "
+                    "'inheritance'), writes bitdot-cube.html, and returns the path plus a "
+                    "graph3d.viewstate/1 payload so a human can open the exact 3D view you used."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "question": {"type": "string", "description": "Question / keyword to center the cube on"},
+                        "label": {"type": "string", "description": "Alternative to question: a node label"},
+                        "depth": {"type": "integer", "default": 2, "description": "Neighborhood depth (1-4)"},
+                        "relation_filter": {
+                            "type": "string",
+                            "description": "Friendly umbrella word: dataflow|call|import|containment|reference|schema|hierarchy|rationale",
+                        },
+                        "output_path": {"type": "string", "description": "Optional output HTML path"},
+                    },
+                },
+            ),
+            types.Tool(
                 name="list_prs",
                 description=(
                     "List open GitHub PRs with CI status, review state, and graph impact "
@@ -683,6 +829,15 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
     def _tool_get_neighbors(arguments: dict) -> str:
         label = arguments["label"].lower()
         rel_filter = arguments.get("relation_filter", "").lower()
+        rel_set = terminology.resolve_relations(rel_filter) if rel_filter else set()
+
+        def _rel_match(rel: str) -> bool:
+            if not rel_filter:
+                return True
+            if rel_set:  # friendly umbrella word -> exact relation-set membership
+                return rel.lower() in rel_set
+            return rel_filter in rel.lower()  # literal/substring fallback
+
         matches = _find_node(G, label)
         if not matches:
             return f"No node matching '{label}' found."
@@ -691,7 +846,7 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
         for nb in G.successors(nid):
             d = edge_data(G, nid, nb)
             rel = d.get("relation", "")
-            if rel_filter and rel_filter not in rel.lower():
+            if not _rel_match(rel):
                 continue
             lines.append(
                 f"  --> {sanitize_label(G.nodes[nb].get('label', nb))} "
@@ -700,7 +855,7 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
         for nb in G.predecessors(nid):
             d = edge_data(G, nb, nid)
             rel = d.get("relation", "")
-            if rel_filter and rel_filter not in rel.lower():
+            if not _rel_match(rel):
                 continue
             lines.append(
                 f"  <-- {sanitize_label(G.nodes[nb].get('label', nb))} "
@@ -882,6 +1037,57 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
             )
         return "\n\n".join(lines)
 
+    def _tool_render_cube(arguments: dict) -> str:
+        from graph3d.bitdot_cube import to_bitdot_cube_html
+
+        question = (arguments.get("question") or arguments.get("label") or "").strip()
+        if not question:
+            return "Provide a 'question' or 'label' to render."
+        depth = min(int(arguments.get("depth", 2)), 4)
+        rel_arg = arguments.get("relation_filter")
+        relations = terminology.resolve_relations(rel_arg) if rel_arg else None
+        if relations is not None and not relations:
+            relations = None  # unknown umbrella word -> don't over-filter
+        H, seeds = build_query_subgraph(G, question, depth=depth, relations=relations)
+        if H.number_of_nodes() == 0:
+            return f"No nodes matched '{sanitize_label(question)}'."
+        sub_comms = _communities_from_graph(H)
+        out_dir = Path(graph_path).parent.resolve()
+        raw_out = arguments.get("output_path")
+        if raw_out:
+            # Security: output_path is agent-supplied and graph3d reasons over
+            # untrusted ingested content, so confine writes to the graph output
+            # directory. Take the basename only (strips directories and drive),
+            # force an .html suffix, and re-check containment to reject any
+            # absolute path or parent-directory escape.
+            name = Path(str(raw_out)).name
+            if not name:
+                return "Invalid output_path: provide a file name."
+            if not name.lower().endswith(".html"):
+                name += ".html"
+            candidate = (out_dir / name).resolve()
+            try:
+                candidate.relative_to(out_dir)
+            except ValueError:
+                return "output_path must stay within the graph output directory."
+            out_path = str(candidate)
+        else:
+            out_path = str(out_dir / "bitdot-cube.html")
+        try:
+            to_bitdot_cube_html(H, sub_comms, out_path, node_limit=max(5000, H.number_of_nodes() + 1))
+        except Exception as exc:
+            return f"Could not render bitdot cube: {exc}"
+        focus = seeds[0] if seeds else None
+        focus_label = G.nodes[focus].get("label", focus) if (focus and focus in G) else "-"
+        view_state = make_view_state(focus=focus, focus_depth=depth)
+        return "\n".join([
+            f"bitdot cube rendered: {sanitize_label(out_path)}",
+            f"  nodes: {H.number_of_nodes()}  links: {H.number_of_edges()}  clusters: {len(sub_comms)}",
+            f"  focus: {sanitize_label(str(focus_label))}",
+            "  view_state (graph3d.viewstate/1):",
+            json.dumps(view_state),
+        ])
+
     _handlers = {
         "query_graph": _tool_query_graph,
         "get_node": _tool_get_node,
@@ -890,6 +1096,7 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
         "god_nodes": _tool_god_nodes,
         "graph_stats": _tool_graph_stats,
         "shortest_path": _tool_shortest_path,
+        "render_cube": _tool_render_cube,
         "list_prs": _tool_list_prs,
         "get_pr_impact": _tool_get_pr_impact,
         "triage_prs": _tool_triage_prs,
