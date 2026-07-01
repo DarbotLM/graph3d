@@ -4,3 +4,12 @@
 worked/**/*.html linguist-vendored=true
 graph3d-out/**/*.html linguist-vendored=true
 *.html linguist-detectable=false
+
+# Binary fixtures: force `binary` explicitly rather than relying on git's
+# content-sniffing heuristic. PDF test fixtures have hand-computed byte
+# offsets in their cross-reference tables -- any CRLF normalization would
+# silently corrupt them on checkout for a contributor with a different
+# core.autocrlf setting.
+*.pdf binary
+*.dmi binary
+

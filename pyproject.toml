@@ -51,7 +51,7 @@ Issues = "https://github.com/DarbotLM/graph3d/issues"
 [project.optional-dependencies]
 mcp = ["mcp"]
 neo4j = ["neo4j"]
-pdf = ["pypdf", "markdownify"]
+pdf = ["markdownify"]
 watch = ["watchdog"]
 svg = ["matplotlib"]
 leiden = ["graspologic; python_version < '3.13'"]
@@ -65,7 +65,7 @@ gemini = ["openai", "tiktoken"]
 openai = ["openai", "tiktoken"]
 chinese = ["jieba"]
 sql = ["tree-sitter-sql"]
-all = ["mcp", "neo4j", "pypdf", "markdownify", "watchdog", "graspologic; python_version < '3.13'", "python-docx", "openpyxl", "faster-whisper; python_version >= '3.11'", "yt-dlp", "matplotlib", "openai", "tiktoken", "boto3", "tree-sitter-sql", "jieba"]
+all = ["mcp", "neo4j", "markdownify", "watchdog", "graspologic; python_version < '3.13'", "python-docx", "openpyxl", "faster-whisper; python_version >= '3.11'", "yt-dlp", "matplotlib", "openai", "tiktoken", "boto3", "tree-sitter-sql", "jieba"]
 
 [project.scripts]
 graph3d = "graph3d.__main__:main"

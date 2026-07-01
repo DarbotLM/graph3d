@@ -25,6 +25,7 @@ from graph3d.extract import (
 )
 from graph3d.extractor_registry import ExtractorRegistry
 from graph3d.mcp_ingest import extract_mcp_config
+from graph3d import pdf as g3pdf
 from graph3d.schema_paths import extract_sqlite_schema
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -815,6 +816,86 @@ def test_encoding_and_charmap_behaviors(tmp_path, monkeypatch, capsys):
     captured = capsys.readouterr()
     if succeeded.get("failed_chunks", 0) != 0 or ("WARNING:" in captured.err and "0/" not in captured.err):
         failures.append(f"chunk success reporting changed: {succeeded} stderr={captured.err!r}")
+    assert not failures, failures
+
+
+def test_native_pdf_engine(tmp_path):
+    """graph3d.pdf is a from-scratch PDF reader (no third-party PDF library):
+    object tokenizer, classic xref tables, xref streams + object streams
+    (PDF 1.5+), FlateDecode, page-tree traversal, simple-font encodings
+    (WinAnsi/Differences) and Type0/ToUnicode CMap text decoding, plus the
+    document-intelligence layer (summary/structure/search/tables/markdown)."""
+    failures = []
+
+    # -- structural cases: (fixture, expected substrings in extracted text, expected page count)
+    case_table = [
+        ("sample.pdf", ["Hello World", "Second line: caf\u00e9"], 1),
+        ("sample_multipage.pdf", ["Page one content", "Page two content"], 2),
+        ("sample_flate.pdf", ["Compressed content stream"], 1),
+        ("sample_cidfont.pdf", ["Hij"], 1),  # Identity-H codes decoded via ToUnicode bfchar/bfrange
+    ]
+    for fixture, expected_substrings, expected_pages in case_table:
+        path = FIXTURES / fixture
+        pages = g3pdf.extract_pages(path)
+        if len(pages) != expected_pages:
+            failures.append(f"{fixture}: expected {expected_pages} pages, got {len(pages)}")
+        full_text = g3pdf.extract_text(path)
+        for expected in expected_substrings:
+            if expected not in full_text:
+                failures.append(f"{fixture}: missing {expected!r} in {full_text!r}")
+        if g3pdf.get_page_count(path) != expected_pages:
+            failures.append(f"{fixture}: get_page_count mismatch")
+
+    # -- metadata: Info dict values decode as plain str, not raw PDF bytes
+    meta = g3pdf.extract_metadata(FIXTURES / "sample.pdf")
+    if not isinstance(meta["pages"], int) or meta["pages"] != 1:
+        failures.append(f"extract_metadata pages wrong: {meta}")
+
+    # -- document-intelligence layer, ported from Darbot PDF Viewer MCP
+    # (github.com/darbotlabs/Darbot-PDF-Viewer-MCP), operating on real page
+    # boundaries rather than that tool's form-feed-splitting fallback.
+    summary = g3pdf.get_summary(FIXTURES / "sample_multipage.pdf")
+    if "Pages: 2" not in summary or "Page one content" not in summary:
+        failures.append(f"get_summary missing expected content: {summary!r}")
+
+    structure = g3pdf.analyze_structure(FIXTURES / "sample_multipage.pdf")
+    if structure["pages"] != 2 or structure["total_words"] < 4:
+        failures.append(f"analyze_structure looks wrong: {structure}")
+
+    doctype_cases = [
+        ("An abstract of this paper. See references [1].", "academic_paper"),
+        ("Invoice #123. Amount due: $50.", "invoice"),
+        ("plain body text with nothing special", "general_document"),
+    ]
+    for text, expected in doctype_cases:
+        got = g3pdf.detect_document_type(text)
+        if got != expected:
+            failures.append(f"detect_document_type({text!r}) = {got!r}, expected {expected!r}")
+
+    hits = g3pdf.search_text(FIXTURES / "sample_multipage.pdf", "content")
+    if len(hits) != 2 or hits[0]["page"] != 1 or hits[1]["page"] != 2:
+        failures.append(f"search_text wrong hits: {hits}")
+
+    markdown = g3pdf.to_markdown(FIXTURES / "sample.pdf")
+    if not markdown.startswith("# ") or "Hello World" not in markdown:
+        failures.append(f"to_markdown missing expected structure: {markdown!r}")
+
+    # -- robustness: malformed input must degrade gracefully, never crash
+    bad_path = tmp_path / "not_really_a_pdf.pdf"
+    bad_path.write_bytes(b"this is not a PDF file at all")
+    if g3pdf.extract_text(bad_path) != "":
+        failures.append("extract_text should return '' for a non-PDF file")
+    truncated = tmp_path / "truncated.pdf"
+    truncated.write_bytes(b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog")
+    doc = g3pdf.Document(truncated.read_bytes())
+    if doc.pages() != []:
+        failures.append("truncated PDF should recover to an empty page list, not crash")
+
+    # -- detect.py integration: the public entry point graph3d actually calls
+    from graph3d.detect import extract_pdf_text
+    if extract_pdf_text(FIXTURES / "sample.pdf") != g3pdf.extract_text(FIXTURES / "sample.pdf"):
+        failures.append("detect.extract_pdf_text is no longer a thin wrapper over graph3d.pdf")
+
     assert not failures, failures
 
 

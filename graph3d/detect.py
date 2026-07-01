@@ -318,16 +318,11 @@ def classify_file(path: Path) -> FileType | None:
 
 
 def extract_pdf_text(path: Path) -> str:
-    """Extract plain text from a PDF file using pypdf."""
+    """Extract plain text from a PDF file using graph3d's native PDF reader
+    (no third-party PDF library dependency)."""
     try:
-        from pypdf import PdfReader
-        reader = PdfReader(str(path))
-        pages = []
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                pages.append(text)
-        return "\n".join(pages)
+        from graph3d.pdf import extract_text as _native_extract_text
+        return _native_extract_text(path)
     except Exception:
         return ""
 
