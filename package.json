@@ -22,6 +22,7 @@
     "bin/",
     "scripts/",
     "graph3d/*.py",
+    "graph3d/schemas/*.json",
     "graph3d/skill*.md",
     "docs/*.md",
     "docs/apim/*",

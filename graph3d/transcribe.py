@@ -51,9 +51,30 @@ def download_audio(url: str, output_dir: Path) -> Path:
     Returns the path to the downloaded audio file (.m4a or .opus).
     Uses cached file if already downloaded.
     """
-    from graph3d.security import validate_url
+    from urllib import request
+    from graph3d.security import _NoFileRedirectHandler, _ssrf_guarded_socket, validate_url
     validate_url(url)  # blocks private IPs, bad schemes before yt-dlp runs
     yt_dlp = _get_yt_dlp()
+    from yt_dlp.networking._urllib import UrllibRH
+
+    class GuardedUrllibRH(UrllibRH):
+        def _send(self, media_request):
+            validate_url(media_request.url)
+            return super()._send(media_request)
+
+        def _create_instance(self, proxies, cookiejar, legacy_ssl_support=None):
+            return request.build_opener(
+                request.ProxyHandler({}),
+                request.HTTPCookieProcessor(cookiejar),
+                request.HTTPSHandler(context=self._make_sslcontext(
+                    legacy_ssl_support=legacy_ssl_support
+                )),
+                _NoFileRedirectHandler(),
+            )
+
+    class GuardedYoutubeDL(yt_dlp.YoutubeDL):
+        def build_request_director(self, handlers, preferences=None):
+            return super().build_request_director([GuardedUrllibRH])
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # yt-dlp uses %(title)s which can be long/weird — use a stable name based on URL hash
@@ -75,10 +96,12 @@ def download_audio(url: str, output_dir: Path) -> Path:
         'no_warnings': True,
         'noplaylist': True,
         'postprocessors': [],  # no ffmpeg needed — use native audio
+        'proxy': '',
+        'external_downloader': None,
     }
 
     print(f"  downloading audio: {url[:80]} ...", flush=True)
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with _ssrf_guarded_socket(), GuardedYoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         ext = info.get('ext', 'm4a')
         downloaded = output_dir / f"yt_{url_hash}.{ext}"

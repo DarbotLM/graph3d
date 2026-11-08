@@ -31,7 +31,7 @@ function pythonCandidates() {
 
 function run(candidate, args, options = {}) {
   return childProcess.spawnSync(candidate.command, [...candidate.args, ...args], {
-    cwd: packageRoot,
+    cwd: options.cwd || packageRoot,
     env: pythonEnv(options.env),
     stdio: options.stdio || "inherit",
     windowsHide: true
@@ -142,7 +142,7 @@ function main() {
     python = ensureManagedPython(basePython);
   }
 
-  const result = run(python, ["-m", "graph3d", ...args]);
+  const result = run(python, ["-m", "graph3d", ...args], { cwd: process.cwd() });
   if (result.error) {
     fail(result.error.message);
   }

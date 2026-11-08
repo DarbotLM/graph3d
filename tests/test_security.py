@@ -62,6 +62,50 @@ VALID = {
 }
 
 
+def test_detection_checks_symlink_targets(tmp_path):
+    from graph3d.detect import detect
+
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    external = tmp_path / "external"
+    external.mkdir()
+    safe = external / "source.py"
+    safe.write_text("def example():\n    pass\n", encoding="utf-8")
+    sensitive = external / ".secrets"
+    sensitive.mkdir()
+    hidden = sensitive / "source.py"
+    hidden.write_text("def hidden():\n    pass\n", encoding="utf-8")
+    (corpus / "safe.py").symlink_to(safe)
+    (corpus / "hidden.py").symlink_to(hidden)
+    (corpus / "linked").symlink_to(sensitive, target_is_directory=True)
+    (corpus / "dangling.py").symlink_to(external / "missing.py")
+    for follow in (None, True):
+        result = detect(corpus, follow_symlinks=follow)
+        assert result["files"]["code"] == [str(corpus / "safe.py")]
+    assert detect(corpus, follow_symlinks=False)["files"]["code"] == []
+
+
+def test_audio_download_guards_secondary_requests(monkeypatch, tmp_path):
+    import yt_dlp
+    from yt_dlp.networking.exceptions import NoSupportingHandlers
+    from graph3d.transcribe import download_audio
+
+    def resolve(host, *args, **kwargs):
+        address = "127.0.0.1" if host == "127.0.0.1" else "93.184.216.34"
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 443))]
+
+    monkeypatch.setattr(socket, "getaddrinfo", resolve)
+
+    def extract_info(downloader, url, download):
+        assert set(downloader._request_director.handlers) == {"GuardedUrllib"}
+        assert downloader.params["proxy"] == ""
+        downloader.urlopen("http://127.0.0.1/media")
+
+    monkeypatch.setattr(yt_dlp.YoutubeDL, "extract_info", extract_info)
+    with pytest.raises(NoSupportingHandlers):
+        download_audio("https://example.test/video", tmp_path)
+
+
 def _mock_response(content: bytes, status: int = 200) -> MagicMock:
     response = MagicMock()
     response.__enter__ = lambda s: s

@@ -1099,6 +1099,8 @@ def detect(
                 if fname in _SKIP_FILES:
                     continue
                 p = dp / fname
+                if p.is_symlink() and not follow_symlinks:
+                    continue
                 if p not in seen:
                     seen.add(p)
                     all_files.append(p)
@@ -1118,7 +1120,11 @@ def detect(
             continue
         if not _profile_allows_file(p, root, profile_name):
             continue
-        if _is_sensitive(p):
+        try:
+            resolved = p.resolve(strict=True)
+        except (OSError, RuntimeError):
+            continue
+        if _is_sensitive(p) or _is_sensitive(resolved):
             skipped_sensitive.append(str(p))
             continue
         ftype = classify_file(p)
