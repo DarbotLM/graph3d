@@ -55,7 +55,7 @@ def download_audio(url: str, output_dir: Path) -> Path:
     from graph3d.security import _NoFileRedirectHandler, _ssrf_guarded_socket, validate_url
     validate_url(url)  # blocks private IPs, bad schemes before yt-dlp runs
     yt_dlp = _get_yt_dlp()
-    from yt_dlp.networking._urllib import UrllibRH
+    from yt_dlp.networking._urllib import HTTPHandler, UrllibRH
 
     class GuardedUrllibRH(UrllibRH):
         def _send(self, media_request):
@@ -63,14 +63,23 @@ def download_audio(url: str, output_dir: Path) -> Path:
             return super()._send(media_request)
 
         def _create_instance(self, proxies, cookiejar, legacy_ssl_support=None):
-            return request.build_opener(
+            opener = request.OpenerDirector()
+            for handler in (
                 request.ProxyHandler({}),
                 request.HTTPCookieProcessor(cookiejar),
-                request.HTTPSHandler(context=self._make_sslcontext(
-                    legacy_ssl_support=legacy_ssl_support
-                )),
+                HTTPHandler(
+                    debuglevel=int(bool(self.verbose)),
+                    context=self._make_sslcontext(legacy_ssl_support=legacy_ssl_support),
+                    source_address=self.source_address,
+                ),
+                request.UnknownHandler(),
+                request.HTTPDefaultErrorHandler(),
+                request.HTTPErrorProcessor(),
                 _NoFileRedirectHandler(),
-            )
+            ):
+                opener.add_handler(handler)
+            opener.addheaders = []
+            return opener
 
     class GuardedYoutubeDL(yt_dlp.YoutubeDL):
         def build_request_director(self, handlers, preferences=None):

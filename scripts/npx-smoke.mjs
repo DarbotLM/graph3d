@@ -66,8 +66,7 @@ try {
     cwd: corpus
   });
   if (!fs.existsSync(path.join(corpus, "graph3d-out", "graph.json"))) {
-    console.error("ERROR: npm launcher did not update the caller's working directory.");
-    process.exitCode = 1;
+    throw new Error("npm launcher did not update the caller's working directory.");
   }
   console.log(`npx smoke passed for ${tarball}.`);
 } finally {

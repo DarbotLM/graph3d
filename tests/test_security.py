@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import json
+import contextlib
+import gzip
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import re
 import socket
+import threading
 import urllib.error
 from pathlib import Path
 from typing import Any
@@ -104,6 +108,53 @@ def test_audio_download_guards_secondary_requests(monkeypatch, tmp_path):
     monkeypatch.setattr(yt_dlp.YoutubeDL, "extract_info", extract_info)
     with pytest.raises(NoSupportingHandlers):
         download_audio("https://example.test/video", tmp_path)
+
+
+def test_audio_download_preserves_compressed_responses(monkeypatch, tmp_path):
+    import yt_dlp
+    from graph3d.transcribe import download_audio
+
+    body = b"compressed transport contract"
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            compressed = gzip.compress(body)
+            self.send_response(200)
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Content-Length", str(len(compressed)))
+            self.end_headers()
+            self.wfile.write(compressed)
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    url = f"http://127.0.0.1:{server.server_port}/media"
+    original_validate = validate_url
+
+    def validate_fixture(value):
+        return value if value == url else original_validate(value)
+
+    monkeypatch.setattr("graph3d.security.validate_url", validate_fixture)
+    monkeypatch.setattr("graph3d.security._ssrf_guarded_socket", contextlib.nullcontext)
+
+    def extract_info(downloader, url, download):
+        with downloader.urlopen(url) as response:
+            payload = response.read()
+        assert payload == body
+        info = {"id": "fixture", "title": "fixture", "ext": "m4a"}
+        Path(downloader.prepare_filename(info)).write_bytes(payload)
+        return info
+
+    monkeypatch.setattr(yt_dlp.YoutubeDL, "extract_info", extract_info)
+    try:
+        assert download_audio(url, tmp_path).read_bytes() == body
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
 
 
 def _mock_response(content: bytes, status: int = 200) -> MagicMock:
