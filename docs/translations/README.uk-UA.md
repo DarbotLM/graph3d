@@ -52,13 +52,13 @@ graph3d export callflow-html
 
 | Вимога | Мінімум | Перевірка | Встановлення |
 |---|---|---|---|
-| Python | 3.10+ | `python --version` | [python.org](https://www.python.org/downloads/) |
+| Python | 3.14+ | `python --version` | [python.org](https://www.python.org/downloads/) |
 | uv *(рекомендовано)* | будь-яка | `uv --version` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | pipx *(альтернатива)* | будь-яка | `pipx --version` | `pip install pipx` |
 
 **Швидке встановлення на macOS (Homebrew):**
 ```bash
-brew install python@3.12 uv
+brew install python@3.14 uv
 ```
 
 **Швидке встановлення на Windows:**
@@ -68,7 +68,7 @@ winget install astral-sh.uv
 
 **Ubuntu/Debian:**
 ```bash
-sudo apt install python3.12 python3-pip pipx
+sudo apt install python3.14 python3-pip pipx
 # або встановити uv:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
@@ -543,7 +543,7 @@ git clone https://github.com/DarbotLM/graph3d.git
 cd graph3d
 git checkout v8                        # гілка активної розробки
 
-# Створіть віртуальне середовище (потрібен Python 3.10+):
+# Створіть віртуальне середовище (потрібен Python 3.14+):
 python3 -m venv .venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
 

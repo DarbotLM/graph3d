@@ -61,13 +61,13 @@ graph3d export callflow-html
 
 | Requirement | Minimum | Check | Install |
 |---|---|---|---|
-| Python | 3.10+ | `python --version` | [python.org](https://www.python.org/downloads/) |
+| Python | 3.14+ | `python --version` | [python.org](https://www.python.org/downloads/) |
 | uv *(recommended)* | any | `uv --version` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | pipx *(alternative)* | any | `pipx --version` | `pip install pipx` |
 
 **macOS quick install (Homebrew):**
 ```bash
-brew install python@3.12 uv
+brew install python@3.14 uv
 ```
 
 **Windows quick install:**
@@ -77,7 +77,7 @@ winget install astral-sh.uv
 
 **Ubuntu/Debian:**
 ```bash
-sudo apt install python3.12 python3-pip pipx
+sudo apt install python3.14 python3-pip pipx
 # or install uv:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
@@ -129,7 +129,7 @@ for example `graph3d claude install --project` or `graph3d codex install --proje
 
 > **`graph3d: command not found`?** Use `uv tool install graph3d` or `pipx install graph3d` — both put the CLI on PATH automatically. With plain `pip`, add `~/.local/bin` (Linux) or `~/Library/Python/3.x/bin` (Mac) to your PATH, or run `python -m graph3d`.
 
-> **npm/npx note:** The npm package is a Node launcher for the Python CLI. It requires Python 3.10+ and creates a managed Python environment under `~/.graph3d/npm-python/<version>` if `graph3d` is not already installed for the selected Python. Set `GRAPH3D_PYTHON=/path/to/python` to force a specific Python environment.
+> **npm/npx note:** The npm package is a Node launcher for the Python CLI. It requires Python 3.14+ and creates a managed Python environment under `~/.graph3d/npm-python/<version>` if `graph3d` is not already installed for the selected Python. Set `GRAPH3D_PYTHON=/path/to/python` to force a specific Python environment.
 
 > **Avoid `pip install` on Mac/Windows** if possible. The skill resolves Python at runtime from `graph3d-out/.graph3d_python`; if that points to a different environment than where `pip` installed the package, you'll get `ModuleNotFoundError: No module named 'graph3d'`. `uv tool install` and `pipx install` isolate the package in their own env and avoid this entirely.
 
@@ -185,11 +185,10 @@ Install only what you need:
 | `pdf` | PDF extraction | `pip install "graph3d[pdf]"` |
 | `office` | `.docx` and `.xlsx` support | `pip install "graph3d[office]"` |
 | `google` | Google Sheets rendering | `pip install "graph3d[google]"` |
-| `video` | Video/audio transcription (faster-whisper + yt-dlp) | `pip install "graph3d[video]"` |
+| `video` | Video/audio transcription (faster-whisper + yt-dlp; Python 3.14) | `pip install "graph3d[video]"` |
 | `mcp` | MCP stdio server | `pip install "graph3d[mcp]"` |
 | `neo4j` | Neo4j push support | `pip install "graph3d[neo4j]"` |
 | `svg` | SVG graph export | `pip install "graph3d[svg]"` |
-| `leiden` | Leiden community detection (Python < 3.13 only) | `pip install "graph3d[leiden]"` |
 | `ollama` | Ollama local inference | `pip install "graph3d[ollama]"` |
 | `openai` | OpenAI / OpenAI-compatible APIs | `pip install "graph3d[openai]"` |
 | `gemini` | Google Gemini API | `pip install "graph3d[gemini]"` |
@@ -201,6 +200,12 @@ Install only what you need:
 SQLite database ingestion for `.db`, `.sqlite`, and `.sqlite3` files uses Python's
 standard-library `sqlite3` module, so it does not require the `sql` extra. The
 `sql` extra is only for parsing `.sql` text files.
+
+Leiden clustering via `graspologic` is not available on Python 3.14+; graph3d uses
+NetworkX's built-in Louvain clustering instead.
+
+The `video` extra currently omits `faster-whisper` on Python 3.15 because its
+`onnxruntime` dependency does not yet publish compatible wheels.
 
 ---
 
@@ -618,7 +623,7 @@ uv run python -c "import graph3d; print(graph3d.__file__)"
 ### Running tests
 
 Run tests through `uv run`, not a bare system `python` or `pytest`. CI validates
-against Python 3.10 and 3.12 after `uv sync --all-extras`, then runs:
+against Python 3.14 after `uv sync --all-extras`, then runs:
 
 ```bash
 uv run pytest tests/ -q --tb=short          # CI-aligned full suite

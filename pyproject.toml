@@ -9,7 +9,7 @@ description = "AI coding assistant skill (Claude Code, Codex, OpenCode, Cursor, 
 readme = "README.md"
 license = { file = "LICENSE" }
 keywords = ["claude", "claude-code", "codex", "opencode", "cursor", "gemini", "aider", "kiro", "pi", "devin", "knowledge-graph", "rag", "graphrag", "obsidian", "community-detection", "tree-sitter", "leiden", "llm"]
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     "networkx",
     "datasketch",
@@ -54,10 +54,9 @@ neo4j = ["neo4j"]
 pdf = ["markdownify"]
 watch = ["watchdog"]
 svg = ["matplotlib"]
-leiden = ["graspologic; python_version < '3.13'"]
 office = ["python-docx", "openpyxl"]
 google = ["openpyxl"]
-video = ["faster-whisper; python_version >= '3.11'", "yt-dlp"]
+video = ["faster-whisper; python_version < '3.15'", "yt-dlp"]
 kimi = ["openai", "tiktoken"]
 ollama = ["openai"]
 bedrock = ["boto3"]
@@ -65,7 +64,7 @@ gemini = ["openai", "tiktoken"]
 openai = ["openai", "tiktoken"]
 chinese = ["jieba"]
 sql = ["tree-sitter-sql"]
-all = ["mcp>=1.30,<2", "neo4j", "markdownify", "watchdog", "graspologic; python_version < '3.13'", "python-docx", "openpyxl", "faster-whisper; python_version >= '3.11'", "yt-dlp", "matplotlib", "openai", "tiktoken", "boto3", "tree-sitter-sql", "jieba"]
+all = ["mcp>=1.30,<2", "neo4j", "markdownify", "watchdog", "python-docx", "openpyxl", "faster-whisper; python_version < '3.15'", "yt-dlp", "matplotlib", "openai", "tiktoken", "boto3", "tree-sitter-sql", "jieba"]
 
 [project.scripts]
 graph3d = "graph3d.__main__:main"
@@ -112,7 +111,7 @@ skips = ["B404"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py314"
 
 [tool.ruff.lint]
 # Keep the committed baseline conservative until upstream adopts a broader lint policy.
@@ -120,5 +119,5 @@ select = ["E9", "F63", "F7", "F82"]
 
 [tool.pyright]
 include = ["graph3d", "tests"]
-pythonVersion = "3.10"
+pythonVersion = "3.14"
 typeCheckingMode = "basic"

@@ -120,7 +120,7 @@ npx graph3d --help
 npx graph3d query "What are the core abstractions?"
 ```
 
-The npm launcher requires Python 3.10 or newer. If the selected Python does not
+The npm launcher requires Python 3.14 or newer. If the selected Python does not
 already have the matching `graph3d` package installed, it creates a managed
 virtual environment under `~/.graph3d/npm-python/<version>` and installs the
 bundled Python package there. Set `GRAPH3D_PYTHON=/path/to/python` to force a

@@ -50,7 +50,7 @@ function pythonEnv(extraEnv = {}) {
 function hasSupportedPython(candidate) {
   const probe = run(candidate, [
     "-c",
-    "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"
+    "import sys; raise SystemExit(0 if sys.version_info >= (3, 14) else 1)"
   ], { stdio: "ignore" });
   return probe.status === 0;
 }
@@ -126,7 +126,7 @@ function ensureManagedPython(basePython) {
 
 function fail(message, status = 1) {
   console.error(`ERROR: ${message}.`);
-  console.error("Install Python 3.10+ and ensure pip can install graph3d dependencies, or set GRAPH3D_PYTHON to a Python executable with graph3d installed.");
+  console.error("Install Python 3.14+ and ensure pip can install graph3d dependencies, or set GRAPH3D_PYTHON to a Python executable with graph3d installed.");
   process.exit(status || 1);
 }
 
@@ -137,7 +137,7 @@ function main() {
   if (!python) {
     const basePython = findBasePython();
     if (!basePython) {
-      fail("no supported Python 3.10+ interpreter was found on PATH");
+      fail("no supported Python 3.14+ interpreter was found on PATH");
     }
     python = ensureManagedPython(basePython);
   }
