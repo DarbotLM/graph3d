@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import builtins
+import asyncio
 import json
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 from unittest import mock
 
@@ -290,14 +293,11 @@ def test_query_helpers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: 
     graph_path.write_text(json.dumps(json_graph.node_link_data(_graph(), edges="links")), encoding="utf-8")
     if _load_graph(str(graph_path)).number_of_nodes() != _graph().number_of_nodes():
         failures.append("_load_graph roundtrip mismatch")
-    with pytest.raises(SystemExit):
+    with pytest.raises(ValueError, match="not found"):
         _load_graph(str(tmp_path / "missing.json"))
     monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 16)
-    with pytest.raises(SystemExit):
+    with pytest.raises(ValueError, match="exceeds.*byte cap"):
         _load_graph(str(graph_path))
-    err = capsys.readouterr().err
-    if "exceeds" not in err or "byte cap" not in err:
-        failures.append(f"oversize load error mismatch: {err}")
     monkeypatch.setattr("graph3d.security._MAX_GRAPH_FILE_BYTES", 10 * 1024 * 1024)
     first_key = (graph_path.stat().st_mtime_ns, graph_path.stat().st_size)
     _write_json(graph_path, json_graph.node_link_data(nx.DiGraph([("a", "b")]), edges="links"))
@@ -385,12 +385,68 @@ def test_is_graph3d_out_graph(tmp_path: Path) -> None:
         (inside, True),
         (tmp_path / "graph.json", False),
         (tmp_path / "other" / "graph.json", False),
+        (inside.parent / "nested" / "graph.json", False),
+        (inside.parent / "nested" / "deeper" / "graph.json", False),
+        (inside.parent / "other.json", False),
     ]
     failures = []
     for path, expected in cases:
         if _is_graph3d_out_graph(path) != expected:
             failures.append(f"{path}: expected {expected}")
     assert not failures, "\n".join(failures)
+
+
+@pytest.mark.parametrize("relative_path, content", [
+    ("graph3d-out/nested/graph.json", "{}"),
+    ("graph3d-out/graph.json", "{invalid"),
+    ("graph3d-out/graph.json", None),
+])
+def test_mcp_startup_rejects_invalid_graph(tmp_path, relative_path, content):
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if content is not None:
+        path.write_text(content, encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-m", "graph3d.serve", str(path)],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 1
+    assert "error:" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_mcp_real_stdio_keeps_last_valid_graph_on_reload(tmp_path):
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+
+    path = tmp_path / "graph3d-out" / "graph.json"
+    path.parent.mkdir()
+    path.write_text(json.dumps(json_graph.node_link_data(_graph(), edges="links")), encoding="utf-8")
+
+    async def exercise():
+        parameters = StdioServerParameters(
+            command=sys.executable, args=["-m", "graph3d.serve", str(path)]
+        )
+        async with stdio_client(parameters) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool("query_graph", {"question": "extract"})
+                assert not result.isError
+                assert "extract" in result.content[0].text
+                path.write_text("{invalid", encoding="utf-8")
+                stale = await session.call_tool("query_graph", {"question": "extract"})
+                assert not stale.isError
+                assert stale.content[0].text == result.content[0].text
+                replacement = nx.DiGraph()
+                replacement.add_node("new", label="Replacement", community=0)
+                path.write_text(
+                    json.dumps(json_graph.node_link_data(replacement, edges="links")),
+                    encoding="utf-8",
+                )
+                reloaded = await session.call_tool("query_graph", {"question": "Replacement"})
+                assert "Replacement" in reloaded.content[0].text
+
+    asyncio.run(asyncio.wait_for(exercise(), timeout=45))
 
 
 def test_query_graph_text_relation_narrowing() -> None:
