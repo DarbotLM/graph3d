@@ -8,15 +8,29 @@ import subprocess
 from typing import Any
 from urllib import error as urlerror
 from urllib import request as urlrequest
+from urllib.parse import urlsplit
 
 import networkx as nx
-from networkx.readwrite import json_graph
 
 from graph3d.affected import DEFAULT_AFFECTED_RELATIONS, format_affected
-from graph3d.serve import _find_node, _load_graph, _query_graph_text
+from graph3d.serve import GraphLoadError, _find_node, _load_graph, _query_graph_text
 
 
 SCHEMA_VERSION = "1.0.0"
+
+
+class _SafeRedirectHandler(urlrequest.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        source = urlsplit(req.full_url)
+        target = urlsplit(newurl)
+        source_origin = (source.scheme, source.hostname, source.port or (443 if source.scheme == "https" else 80))
+        target_origin = (target.scheme, target.hostname, target.port or (443 if target.scheme == "https" else 80))
+        if (
+            source.scheme == "https" and target.scheme != "https"
+            or req.has_header("Authorization") and source_origin != target_origin
+        ):
+            raise urlerror.HTTPError(req.full_url, code, "Unsafe redirect blocked", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 @dataclass(frozen=True)
@@ -177,7 +191,9 @@ class Graph3dClient:
     def _dispatch_cli(self, operation: str, payload: dict[str, Any]) -> Any:
         command = [self.cli_executable]
         if operation == "query":
-            command += ["query", payload["question"], "--depth", str(payload.get("depth", 3))]
+            command += ["query", payload["question"]]
+            if payload.get("mode") == "dfs":
+                command += ["--dfs"]
         elif operation == "explain":
             command += ["explain", payload["concept"]]
         elif operation == "path":
@@ -186,10 +202,15 @@ class Graph3dClient:
             command += ["update", payload.get("path", ".")]
         elif operation == "affected":
             command += ["affected", payload["query"], "--depth", str(payload.get("depth", 2))]
+            for relation in payload.get("relations", []):
+                command += ["--relation", relation]
         else:
             raise ValueError(f"Unknown operation: {operation}")
-        command += ["--graph", str(self.graph), "--format", "json"]
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        if operation != "update":
+            command += ["--graph", str(self.graph)]
+        result = subprocess.run(
+            command, check=True, capture_output=True, text=True, timeout=self.timeout
+        )
         return self._coerce_json(result.stdout.strip())
 
     def _dispatch_http(self, operation: str, payload: dict[str, Any], *, idempotent: bool) -> Any:
@@ -217,8 +238,9 @@ class Graph3dClient:
         request_payload = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if self.api_key:
-            headers["Authorization"] = f"******"
+            headers["Authorization"] = "Bearer " + self.api_key
         attempts = self.max_read_retries + 1 if idempotent else 1
+        opener = urlrequest.build_opener(_SafeRedirectHandler())
         last_error: Exception | None = None
         for _ in range(attempts):
             request = urlrequest.Request(
@@ -228,8 +250,10 @@ class Graph3dClient:
                 headers=headers,
             )
             try:
-                with urlrequest.urlopen(request, timeout=self.timeout) as response:
+                with opener.open(request, timeout=self.timeout) as response:
                     return self._coerce_json(response.read().decode("utf-8"))
+            except urlerror.HTTPError:
+                raise
             except (urlerror.URLError, TimeoutError) as exc:
                 last_error = exc
         if last_error is not None:
@@ -269,4 +293,3 @@ class Graph3dClient:
     @staticmethod
     def response_to_dict(response: QueryResponse | ExplainResponse | PathResponse | UpdateResponse | AffectedResponse) -> dict[str, Any]:
         return asdict(response)
-

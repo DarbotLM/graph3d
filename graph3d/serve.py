@@ -19,6 +19,10 @@ except ImportError:
     _jieba = None
 
 
+class GraphLoadError(ValueError):
+    """A graph could not be read or decoded."""
+
+
 def _load_graph(graph_path: str) -> nx.Graph:
     try:
         resolved = Path(graph_path).resolve()
@@ -29,6 +33,8 @@ def _load_graph(graph_path: str) -> nx.Graph:
         check_graph_file_size_cap(resolved)
         safe = resolved
         data = json.loads(safe.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("Graph JSON must be an object")
         if "links" not in data and "edges" in data:
             data = dict(data, links=data["edges"])
         data = {**data, "directed": True}
@@ -36,19 +42,19 @@ def _load_graph(graph_path: str) -> nx.Graph:
             return json_graph.node_link_graph(data, edges="links")
         except TypeError:
             return json_graph.node_link_graph(data)
-    except (ValueError, FileNotFoundError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
     except json.JSONDecodeError as exc:
-        print(f"error: graph.json is corrupted ({exc}). Re-run /graph3d to rebuild.", file=sys.stderr)
-        sys.exit(1)
+        raise GraphLoadError(
+            f"graph.json is corrupted ({exc}). Re-run /graph3d to rebuild."
+        ) from exc
+    except (OSError, ValueError, TypeError, KeyError, nx.NetworkXError) as exc:
+        raise GraphLoadError(str(exc)) from exc
 
 
 def _is_graph3d_out_graph(path: str | Path) -> bool:
     resolved = Path(path).resolve()
     if resolved.name != "graph.json":
         return False
-    return any(parent.name == "graph3d-out" for parent in resolved.parents)
+    return resolved.parent.name == "graph3d-out"
 
 
 def _communities_from_graph(G: nx.Graph) -> dict[int, list[str]]:
@@ -623,7 +629,11 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
             file=sys.stderr,
         )
         sys.exit(1)
-    G = _load_graph(graph_path)
+    try:
+        G = _load_graph(graph_path)
+    except GraphLoadError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)
     communities = _communities_from_graph(G)
 
     # Hot-reload state: mtime+size key lets us detect graph.json changes without
@@ -655,7 +665,7 @@ def serve(graph_path: str = "graph3d-out/graph.json") -> None:
                 return  # another thread already reloaded
             try:
                 new_G = _load_graph(graph_path)
-            except SystemExit:
+            except GraphLoadError:
                 return  # keep serving stale graph on transient read error
             G = new_G
             communities = _communities_from_graph(new_G)

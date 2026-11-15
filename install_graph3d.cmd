@@ -21,9 +21,9 @@ if exist "%ROOT%.venv\Scripts\python.exe" (
 
 echo Python: %PYTHON_EXE%
 
-"%PYTHON_EXE%" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"
+"%PYTHON_EXE%" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 14) else 1)"
 if errorlevel 1 (
-    echo ERROR: graph3d requires Python 3.10 or newer.
+    echo ERROR: graph3d requires Python 3.14 or newer.
     "%PYTHON_EXE%" --version
     exit /b 1
 )

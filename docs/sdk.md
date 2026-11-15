@@ -28,6 +28,22 @@ result = client.query("Where is extraction implemented?")
 print(result.answer)
 ```
 
+Local loading failures raise `graph3d.sdk.GraphLoadError` (a `ValueError`), not
+`SystemExit`. MCP startup still reports invalid graphs as CLI errors, and the
+server keeps the last valid graph if a reload fails. MCP graph paths must resolve
+directly to `graph3d-out/graph.json`, not a nested file below that directory.
+
+In `mode="cli"`, the client uses the installed CLI's text output and supported
+flags. Queries honor `mode="dfs"` via `--dfs`; query `depth` applies only to local
+and HTTP modes (the CLI uses depth 2). Affected queries honor depth and relation
+filters. Path responses retain the CLI's rendered path text. Updates operate on
+the supplied corpus directory, not the client's graph filename. Subprocesses
+honor the client's timeout.
+
+HTTP mode sends the caller's API key using bearer authentication. Authenticated
+cross-origin redirects and HTTPS downgrades are rejected. Only transient read
+failures are retried; HTTP errors and updates are not retried.
+
 ### Detect a corpus
 
 ```python
@@ -104,7 +120,7 @@ npx graph3d --help
 npx graph3d query "What are the core abstractions?"
 ```
 
-The npm launcher requires Python 3.10 or newer. If the selected Python does not
+The npm launcher requires Python 3.14 or newer. If the selected Python does not
 already have the matching `graph3d` package installed, it creates a managed
 virtual environment under `~/.graph3d/npm-python/<version>` and installs the
 bundled Python package there. Set `GRAPH3D_PYTHON=/path/to/python` to force a
